@@ -7,8 +7,15 @@
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <link rel="stylesheet" href="style.css">
+    
+    <!-- TensorFlow.js and COCO-SSD for Real Computer Vision -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
 </head>
 <body>
+
+    <!-- Hidden Video Tag for Webcam Stream -->
+    <video id="webcam-video" autoplay muted playsinline style="display: none; width: 320px; height: 240px;"></video>
 
     <!-- Sidebar Navigation -->
     <aside>
@@ -372,18 +379,25 @@
                                 Visão Computacional Não Invasiva
                             </h3>
                         </div>
+
+                        <!-- Camera Selector controls -->
+                        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem; background: rgba(0,0,0,0.25); padding: 0.35rem; border-radius: 6px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); align-self: center; margin-left: 0.25rem;">Fonte CAM_01:</span>
+                            <button class="btn active" id="btn-cam1-sim" onclick="setCamSource('sim')" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Simulador</button>
+                            <button class="btn" id="btn-cam1-real" onclick="setCamSource('real')" style="padding: 0.2rem 0.5rem; font-size: 0.7rem;">Câmera Real</button>
+                        </div>
                         
-                        <!-- Video Feed 1 -->
+                        <!-- Video Feed 1 (Simulated or Real Webcam) -->
                         <div class="camera-feed" style="margin-bottom: 1rem;">
                             <canvas id="cam-1-canvas" class="cam-canvas"></canvas>
                             <div class="cam-overlay">
                                 <span class="cam-rec-dot"></span>
-                                CAM_PAULISTA_MASP_01
+                                <span id="cam1-name-display">CAM_PAULISTA_MASP_01</span>
                             </div>
                             <div class="cam-cv-stat" id="cam-1-status">Luz: 34% | Fluxo Normal</div>
                         </div>
 
-                        <!-- Video Feed 2 -->
+                        <!-- Video Feed 2 (Always Simulated Anomaly) -->
                         <div class="camera-feed">
                             <canvas id="cam-2-canvas" class="cam-canvas"></canvas>
                             <div class="cam-overlay">

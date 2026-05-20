@@ -17,7 +17,7 @@ const state = {
     riskLocations: [
         { name: "MASP (Epicentro Tático)", coords: [-23.5615, -46.6562], baseRisk: 42 },
         { name: "Av. Paulista x Rua Augusta", coords: [-23.5595, -46.6585], baseRisk: 55 },
-        { name: "Av. Paulista x Al. Pamplona", coords: [-23.5632, -46.6542], baseRisk: 30 },
+        { name: "Av. Paulista x Al. Pamplona", coords: [-23.5632, -46.6442], baseRisk: 30 },
         { name: "Rua Augusta x Al. Santos", coords: [-23.5615, -46.6605], baseRisk: 48 },
         { name: "Al. Pamplona x Al. Santos", coords: [-23.5650, -46.6558], baseRisk: 22 },
         { name: "Al. Casa Branca x Al. Santos", coords: [-23.5638, -46.6582], baseRisk: 28 },
@@ -61,7 +61,7 @@ const state = {
             urgency: "baixa",
             analysis: {
                 sentiment: "Dúbio",
-                keywords: ["barulho estranho", "Pampona"],
+                keywords: ["barulho estranho", "Pamplona"],
                 location: "Al. Pamplona",
                 timestamp: "13:15"
             }
@@ -110,6 +110,16 @@ const state = {
             "Fluxo": [0.40, 0.80, 0.35]
         },
         feedbackHistory: []
+    },
+    // Real Camera / Computer Vision details
+    camSource: 'sim', // 'sim' or 'real'
+    realCam: {
+        stream: null,
+        model: null,
+        isModelLoading: false,
+        modelError: false,
+        predictions: [],
+        detecting: false
     }
 };
 
@@ -855,7 +865,159 @@ function finishMonteCarlo() {
     renderAnomalies();
 }
 
-// 10. NEURAL CALIBRATION & HUMAN FEEDBACK
+// 10. REAL COMPUTER VISION (WEBCAM & TF.JS / COCO-SSD)
+function setCamSource(source) {
+    if (state.camSource === source) return;
+    
+    state.camSource = source;
+    
+    const btnSim = document.getElementById('btn-cam1-sim');
+    const btnReal = document.getElementById('btn-cam1-real');
+    const camName = document.getElementById('cam1-name-display');
+    const statusText = document.getElementById('cam-1-status');
+    
+    if (source === 'real') {
+        btnSim.classList.remove('active');
+        btnReal.classList.add('active');
+        camName.textContent = "CAM_LOCAL_DISPOSITIVO_01 (WEB_IA)";
+        statusText.textContent = "Iniciando Webcam...";
+        startWebcamFeed();
+    } else {
+        btnSim.classList.add('active');
+        btnReal.classList.remove('active');
+        camName.textContent = "CAM_PAULISTA_MASP_01";
+        statusText.textContent = "Luz: 34% | Fluxo Normal";
+        stopWebcamFeed();
+    }
+}
+
+function startWebcamFeed() {
+    const videoEl = document.getElementById('webcam-video');
+    const statusText = document.getElementById('cam-1-status');
+    
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            width: { ideal: 320 }, 
+            height: { ideal: 240 } 
+        } 
+    })
+    .then(stream => {
+        state.realCam.stream = stream;
+        videoEl.srcObject = stream;
+        videoEl.onloadedmetadata = () => {
+            videoEl.play();
+        };
+        
+        loadTensorFlowModel();
+    })
+    .catch(err => {
+        console.error("Acesso à webcam recusado ou inexistente:", err);
+        statusText.textContent = "Câmera Bloqueada / Sem Acesso";
+        statusText.style.color = "var(--color-danger)";
+        
+        // Revert UI to simulated source after delay
+        setTimeout(() => {
+            setCamSource('sim');
+            statusText.style.color = "var(--color-success)";
+        }, 3000);
+    });
+}
+
+function stopWebcamFeed() {
+    if (state.realCam.stream) {
+        state.realCam.stream.getTracks().forEach(track => track.stop());
+        state.realCam.stream = null;
+    }
+    const videoEl = document.getElementById('webcam-video');
+    videoEl.srcObject = null;
+    state.realCam.predictions = [];
+}
+
+function loadTensorFlowModel() {
+    const statusText = document.getElementById('cam-1-status');
+    
+    // Check if COCO-SSD loaded from script
+    if (typeof cocoSsd === 'undefined') {
+        statusText.textContent = "Erro: Biblioteca IA não carregada";
+        statusText.style.color = "var(--color-danger)";
+        state.realCam.modelError = true;
+        return;
+    }
+    
+    if (state.realCam.model) {
+        statusText.textContent = "IA Pronta | Analisando Feed";
+        statusText.style.color = "var(--color-success)";
+        return;
+    }
+    
+    statusText.textContent = "Carregando Modelo IA (COCO-SSD)...";
+    statusText.style.color = "var(--color-warning)";
+    state.realCam.isModelLoading = true;
+    
+    cocoSsd.load()
+    .then(model => {
+        state.realCam.model = model;
+        state.realCam.isModelLoading = false;
+        statusText.textContent = "IA Pronta | Analisando Feed";
+        statusText.style.color = "var(--color-success)";
+        
+        state.anomalies.unshift({
+            id: Date.now(),
+            title: "Processador Local de IA Ativo",
+            type: "warning",
+            text: "Modelo COCO-SSD inicializado no navegador. Processamento local de objetos habilitado.",
+            time: getShortTime(),
+            stat: "Plataforma: TensorFlow.js"
+        });
+        renderAnomalies();
+    })
+    .catch(err => {
+        console.error("Falha ao carregar cocoSsd:", err);
+        statusText.textContent = "Erro ao baixar rede neural";
+        statusText.style.color = "var(--color-danger)";
+        state.realCam.isModelLoading = false;
+        state.realCam.modelError = true;
+    });
+}
+
+function runRealTimeObjectDetection() {
+    const videoEl = document.getElementById('webcam-video');
+    
+    if (!state.realCam.model || state.realCam.detecting || videoEl.readyState < 2) return;
+    
+    state.realCam.detecting = true;
+    
+    state.realCam.model.detect(videoEl)
+    .then(predictions => {
+        state.realCam.predictions = predictions;
+        state.realCam.detecting = false;
+        
+        // Dynamic Anomaly detection: if we find a suspicious number of people or specific elements (like cell phone, backpacks left behind)
+        predictions.forEach(p => {
+            if (p.class === 'cell phone' && p.score > 0.8) {
+                const now = Date.now();
+                if (!state.realCam.lastAnomalyTime || now - state.realCam.lastAnomalyTime > 15000) {
+                    state.realCam.lastAnomalyTime = now;
+                    state.anomalies.unshift({
+                        id: now,
+                        title: "Objeto Monitorado Detectado",
+                        type: "warning",
+                        text: `Dispositivo celular (vetor tático) identificado no monitor local CAM_01.`,
+                        time: getShortTime(),
+                        stat: "Confiança: " + Math.round(p.score * 100) + "%"
+                    });
+                    renderAnomalies();
+                }
+            }
+        });
+    })
+    .catch(err => {
+        console.error("Erro na inferência da IA:", err);
+        state.realCam.detecting = false;
+    });
+}
+
+// 11. NEURAL CALIBRATION & HUMAN FEEDBACK
 function submitHumanFeedback(type, element) {
     document.querySelectorAll('.feedback-card').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
@@ -897,7 +1059,7 @@ function triggerNetworkCalibrationAnimation() {
     calibrationPulseTime = 30;
 }
 
-// 11. CAMERAS & NON-MAP GRAPHICS SYSTEM
+// 12. CAMERAS & NON-MAP GRAPHICS SYSTEM
 function initCanvases() {
     cam1Canvas = document.getElementById('cam-1-canvas');
     cam1Ctx = cam1Canvas.getContext('2d');
@@ -937,6 +1099,78 @@ const cvPedestriansCam2 = [
 function drawCVCamera(canvas, ctx, label, speedMultiplier, isAnomalous = false) {
     if (!canvas || !ctx) return;
     
+    // Check if drawing Real Webcam feed
+    if (!isAnomalous && state.camSource === 'real') {
+        const videoEl = document.getElementById('webcam-video');
+        if (videoEl && videoEl.srcObject) {
+            ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+            
+            // Apply overlay filter to preserve privacy feel (glassmorphism/tactical layer)
+            ctx.fillStyle = 'rgba(6, 9, 19, 0.2)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = 'rgba(0, 210, 255, 0.04)';
+            ctx.lineWidth = 1;
+            for(let x = 0; x < canvas.width; x += 30) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for(let y = 0; y < canvas.height; y += 30) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+            
+            // Run Real Time Inference
+            runRealTimeObjectDetection();
+            
+            // Draw Real Bounding Boxes detected by COCO-SSD
+            if (state.realCam.predictions && state.realCam.predictions.length > 0) {
+                state.realCam.predictions.forEach(p => {
+                    // Map video coordinates (320x240) to canvas aspect ratio
+                    const scaleX = canvas.width / 320;
+                    const scaleY = canvas.height / 240;
+                    
+                    const [x, y, w, h] = p.bbox;
+                    const cX = x * scaleX;
+                    const cY = y * scaleY;
+                    const cW = w * scaleX;
+                    const cH = h * scaleY;
+                    
+                    // Draw neon box
+                    ctx.strokeStyle = 'var(--color-primary)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(cX, cY, cW, cH);
+                    
+                    // Box corners
+                    ctx.fillStyle = 'var(--color-primary)';
+                    const handle = 6;
+                    ctx.fillRect(cX-1, cY-1, handle, handle);
+                    ctx.fillRect(cX+cW-handle+1, cY-1, handle, handle);
+                    ctx.fillRect(cX-1, cY+cH-handle+1, handle, handle);
+                    ctx.fillRect(cX+cW-handle+1, cY+cH-handle+1, handle, handle);
+                    
+                    // Text details
+                    ctx.fillStyle = 'var(--color-primary)';
+                    ctx.font = 'bold 9px var(--font-mono)';
+                    const labelStr = `${p.class.toUpperCase()} [${Math.round(p.score * 100)}%]`;
+                    ctx.fillText(labelStr, cX + 4, cY + 12);
+                });
+            }
+            
+            if (state.realCam.isModelLoading) {
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle = 'var(--color-warning)';
+                ctx.font = '12px var(--font-sans)';
+                ctx.textAlign = 'center';
+                ctx.fillText("CARREGANDO MODELO DE DETECÇÃO IA...", canvas.width/2, canvas.height/2);
+                ctx.textAlign = 'left';
+            }
+            
+            return;
+        }
+    }
+    
+    // Normal simulated render (or fallback)
     ctx.fillStyle = '#05070f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
@@ -991,7 +1225,7 @@ function drawCVCamera(canvas, ctx, label, speedMultiplier, isAnomalous = false) 
     ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 }
 
-// 12. NEURAL NETWORK GRAPHICS
+// 13. NEURAL NETWORK GRAPHICS
 const netNodes = {
     inputs: [
         { y: 50, label: "Clima" },
