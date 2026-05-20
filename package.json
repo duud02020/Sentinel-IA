@@ -2,19 +2,27 @@
   "name": "sentinel-ia",
   "version": "1.0.0",
   "description": "Painel de Inteligência Simbiótica Sentinel IA",
-  "main": "index.html",
+  "main": "server.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node server.js",
+    "start-all": "start cmd /k \"node server.js\" && vite"
   },
   "keywords": [
     "sentinel",
     "predictive-security",
-    "simbiotic-intelligence"
+    "simbiotic-intelligence",
+    "rtsp",
+    "camera"
   ],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  },
   "devDependencies": {
     "vite": "^5.0.0"
   }
