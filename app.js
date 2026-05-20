@@ -4,7 +4,7 @@ const state = {
     variables: {
         weather: 'sunny', // sunny, rainy, storm
         event: 'none',    // none, festive, protest
-        economy: 'normal' // normal (standard flow), inflation (20% drop in pedestrian flow)
+        economy: 'normal' // normal, inflation
     },
     systemMetrics: {
         precision: 94.2,
@@ -13,17 +13,30 @@ const state = {
         totalReports: 1489,
         anomaliesCount: 3
     },
+    // Geographic Risk Locations around Av. Paulista, São Paulo
+    riskLocations: [
+        { name: "MASP (Epicentro Tático)", coords: [-23.5615, -46.6562], baseRisk: 42 },
+        { name: "Av. Paulista x Rua Augusta", coords: [-23.5595, -46.6585], baseRisk: 55 },
+        { name: "Av. Paulista x Al. Pamplona", coords: [-23.5632, -46.6542], baseRisk: 30 },
+        { name: "Rua Augusta x Al. Santos", coords: [-23.5615, -46.6605], baseRisk: 48 },
+        { name: "Al. Pamplona x Al. Santos", coords: [-23.5650, -46.6558], baseRisk: 22 },
+        { name: "Al. Casa Branca x Al. Santos", coords: [-23.5638, -46.6582], baseRisk: 28 },
+        { name: "Av. Paulista x R. Peixoto Gomide", coords: [-23.5608, -46.6571], baseRisk: 35 },
+        { name: "Av. Paulista x R. Itapeva", coords: [-23.5623, -46.6552], baseRisk: 26 },
+        { name: "Al. Casa Branca x Al. Lorena", coords: [-23.5662, -46.6602], baseRisk: 18 },
+        { name: "Al. Pamplona x Al. Lorena", coords: [-23.5672, -46.6575], baseRisk: 15 }
+    ],
     nlpReports: [
         {
             id: 1,
-            author: "Morador_Centro",
+            author: "Morador_Paulista",
             reliability: 92,
-            text: "Há um grupo de pessoas observando a entrada do banco comercial, parece que estão forçando a porta dos fundos ou rondando há uns 15 minutos.",
+            text: "Há um grupo de pessoas observando a entrada do MASP, parece que estão rondando há uns 15 minutos e observando as câmeras de segurança.",
             urgency: "alta",
             analysis: {
                 sentiment: "Crítico / Suspeito",
-                keywords: ["banco", "rondando", "porta dos fundos"],
-                location: "Banco Comercial - Centro",
+                keywords: ["MASP", "rondando", "câmeras"],
+                location: "MASP - Centro Tático",
                 timestamp: "13:42"
             }
         },
@@ -31,12 +44,12 @@ const state = {
             id: 2,
             author: "Sentinela_Vigilancia",
             reliability: 98,
-            text: "Lâmpadas apagadas na travessa da Rua Augusta, Zona Sul. Visibilidade reduzida a menos de 5 metros.",
+            text: "Lâmpadas apagadas na travessa da Al. Santos com Casa Branca. Visibilidade reduzida a menos de 5 metros.",
             urgency: "media",
             analysis: {
                 sentiment: "Preocupado",
-                keywords: ["Lâmpadas apagadas", "Visibilidade reduzida"],
-                location: "Rua Augusta - Zona Sul",
+                keywords: ["Lâmpadas apagadas", "Al. Santos"],
+                location: "Al. Santos x Casa Branca",
                 timestamp: "13:30"
             }
         },
@@ -44,12 +57,12 @@ const state = {
             id: 3,
             author: "Anonimo_823",
             reliability: 45,
-            text: "Algum barulho estranho vindo do galpão abandonado na Av. Principal. Pode ser só lixo caindo ou animais.",
+            text: "Algum barulho estranho vindo do canteiro de obras perto da Pamplona. Pode ser só vento.",
             urgency: "baixa",
             analysis: {
                 sentiment: "Dúbio",
-                keywords: ["barulho estranho", "galpão"],
-                location: "Av. Principal",
+                keywords: ["barulho estranho", "Pampona"],
+                location: "Al. Pamplona",
                 timestamp: "13:15"
             }
         }
@@ -59,7 +72,7 @@ const state = {
             id: 1,
             title: "Queda Crítica de Fluxo de Pedestres",
             type: "danger",
-            text: "Rua Augusta (Zona Sul) registrou queda repentina de 22% no fluxo de pedestres sem ocorrências climáticas atípicas.",
+            text: "Al. Santos registrou queda repentina de 22% no fluxo de pedestres sem ocorrências climáticas atípicas.",
             time: "13:51",
             stat: "Variância Estocástica: σ=4.2"
         },
@@ -67,7 +80,7 @@ const state = {
             id: 2,
             title: "Desvio Comportamental Coletivo",
             type: "warning",
-            text: "Padrão de dispersão acelerada detectado próximo à Praça da República após barulho de estouro de escapamento.",
+            text: "Padrão de dispersão acelerada detectado próximo à Augusta após barulho de escapamento alto.",
             time: "13:45",
             stat: "Nível de Hesitação: Médio"
         },
@@ -75,18 +88,17 @@ const state = {
             id: 3,
             title: "Incoerência Climático-Predicional",
             type: "warning",
-            text: "Correlação histórica indica diminuição de crimes patrimoniais durante tempestades, mas relatórios mostram atividade constante.",
+            text: "Correlação histórica indica diminuição de crimes durante tempestades, mas sensores mostram atividade constante.",
             time: "13:20",
             stat: "Margem de Erro: 1.8%"
         }
     ],
-    brainRiskMap: [], // 8x8 grid of risk values
     monteCarlo: {
         isRunning: false,
         progress: 0,
         probB: 0,
         probC: 0,
-        incidentPoint: { x: 120, y: 220 }, // Node location
+        incidentPoint: [-23.5615, -46.6562], // MASP
         routes: [],
         escapeCount: 0
     },
@@ -101,31 +113,60 @@ const state = {
     }
 };
 
-// Canvas references
-let brainCanvas, brainCtx;
-let quickCanvas, quickCtx;
-let twinCanvas, twinCtx;
+// Leaflet Map References
+let quickMap, brainMap, twinMap;
+let quickMapRiskGroup, brainMapRiskGroup, twinMapGroup, twinMapRoutesGroup;
+let twinIncidentMarker, twinBlockadeBMarker, twinBlockadeCMarker;
+
+// Canvas references for other components
 let cam1Canvas, cam1Ctx;
 let cam2Canvas, cam2Ctx;
 let networkCanvas, networkCtx;
 
 // Active variables text dictionary for briefing
 const briefings = {
-    default: "Equipe, hoje o risco na <span class='briefing-highlight'>Zona Sul</span> subiu devido à baixa iluminação reportada na Rua Augusta. Sugiro patrulha preventiva reforçada entre 18h e 20h. O fluxo de pedestres na região comercial está normal, mas requer monitoramento estocástico.",
-    rainy: "Briefing Tático: <span class='briefing-highlight'>Chuva Leve</span> detectada. O modelo preditivo indica maior chance de furtos em pontos de ônibus devido ao agrupamento de pessoas. Redobrem atenção nas avenidas centrais. O fluxo social reduziu levemente nas praças.",
-    storm: "ALERTA TÁTICO: <span class='briefing-highlight'>Tempestade severa</span> em andamento. O tráfego urbano está saturado. O Sentinel prevê risco de incidentes secundários. Foco em rotas de escape do metrô e travessas escuras. Câmeras ativaram filtro infravermelho.",
-    festive: "Briefing Tático: <span class='briefing-highlight'>Evento na Praça Principal</span>. Alta densidade populacional. Risco de furtos e pequenas ocorrências subiu 45%. A Sentinel sugere posicionamento tático nos pontos de acesso norte e leste.",
-    protest: "ALERTA CRÍTICO: <span class='briefing-highlight'>Manifestação reportada</span>. O fluxo de pedestres está altamente errático. Desvio comportamental coletivo de nível 8 detectado. Mantenham o gêmeo digital atualizado com rotas alternativas de escoamento.",
-    inflation: "Briefing de Anomalia: <span class='briefing-highlight'>Queda Incomum de Fluxo (-20%)</span>. Ruas vazias sem justificativa climática. O Sentinel detecta isso como indicativo de insegurança subjetiva/percebida. Intensificar rondas silenciosas na área residencial da Zona Sul."
+    default: "Equipe, hoje o risco na <span class='briefing-highlight'>Al. Santos</span> subiu devido à baixa iluminação reportada na Al. Casa Branca. Sugiro patrulha preventiva reforçada entre 18h e 20h. O fluxo de pedestres na região está normal.",
+    rainy: "Briefing Tático: <span class='briefing-highlight'>Chuva Leve</span> detectada. O modelo preditivo indica maior chance de furtos próximos a paradas de ônibus da Paulista devido ao agrupamento de pedestres.",
+    storm: "ALERTA TÁTICO: <span class='briefing-highlight'>Tempestade severa</span> em andamento. Tráfego urbano saturado. Foco em saídas de metrô da Av. Paulista. Câmeras ativaram filtros de privacidade infravermelhos.",
+    festive: "Briefing Tático: <span class='briefing-highlight'>Concentração no MASP</span>. Alta densidade populacional. Risco de furto oportunista subiu 45%. Sentinel sugere posicionamento nos cruzamentos norte e leste.",
+    protest: "ALERTA CRÍTICO: <span class='briefing-highlight'>Manifestação na Augusta</span>. Fluxo de pedestres altamente errático. Desvio comportamental coletivo detectado. Mantenham rotas alternativas de escoamento ativas.",
+    inflation: "Briefing de Anomalia: <span class='briefing-highlight'>Queda Incomum de Fluxo (-20%)</span>. Ruas vazias sem justificativa climática. O Sentinel detecta isso como indicativo de insegurança subjetiva."
 };
+
+// Node network coordinates on actual streets for Monte Carlo route graph
+const twinGeographicNodes = {
+    A: [-23.5615, -46.6562], // MASP (Start / Incident)
+    D: [-23.5608, -46.6571], // Paulista x Peixoto Gomide
+    E: [-23.5623, -46.6552], // Paulista x Itapeva
+    B: [-23.5638, -46.6582], // Al. Casa Branca x Al. Santos (Police Blockade B)
+    C: [-23.5650, -46.6558], // Al. Pamplona x Al. Santos (Police Blockade C)
+    F: [-23.5592, -46.6558], // Escape North (Peixoto x Jaú)
+    G: [-23.5595, -46.6585], // Escape West (Paulista x Augusta)
+    H: [-23.5672, -46.6575]  // Escape South (Pamplona x Lorena)
+};
+
+// Graph connections for paths
+const twinGeographicEdges = [
+    ['A', 'D'], ['A', 'E'],
+    ['D', 'B'], ['D', 'E'],
+    ['E', 'C'], ['E', 'D'],
+    ['B', 'G'], ['C', 'H'],
+    ['B', 'F'], ['C', 'F']
+];
 
 // Initialize Application
 window.addEventListener('DOMContentLoaded', () => {
     initClock();
     initTabNavigation();
     initSelectors();
+    
+    // Leaflet Init
+    initLeafletMaps();
+    updateGeographicRisks();
+    
+    // Non-map Canvas components
     initCanvases();
-    generateBrainMap();
+    
     renderNLPReports();
     renderAnomalies();
     updateBriefingText();
@@ -133,7 +174,7 @@ window.addEventListener('DOMContentLoaded', () => {
     // Animation Loops
     requestAnimationFrame(mainLoop);
     
-    // Auto-update dashboard metrics slowly to feel alive
+    // Auto-update metrics
     setInterval(slowMetricUpdater, 8000);
 });
 
@@ -142,7 +183,6 @@ function initClock() {
     const timeDisplay = document.getElementById('current-time');
     const updateTime = () => {
         const now = new Date();
-        // Force the date format required or standard formatted
         const formatted = now.toLocaleDateString('pt-BR') + ' ' + now.toLocaleTimeString('pt-BR');
         timeDisplay.textContent = formatted;
     };
@@ -162,7 +202,6 @@ function initTabNavigation() {
 }
 
 function switchTab(tabId) {
-    // Update active nav item
     document.querySelectorAll('.nav-item').forEach(el => {
         if(el.getAttribute('data-tab') === tabId) {
             el.classList.add('active');
@@ -171,7 +210,6 @@ function switchTab(tabId) {
         }
     });
 
-    // Update active content
     document.querySelectorAll('.tab-content').forEach(el => {
         if(el.id === `tab-${tabId}`) {
             el.classList.add('active');
@@ -182,67 +220,205 @@ function switchTab(tabId) {
 
     state.activeTab = tabId;
     
-    // Specific tab activations
-    if (tabId === 'cerebro') {
-        resizeCanvas('brain-map-canvas');
-    } else if (tabId === 'twin') {
-        resizeCanvas('twin-canvas');
-        resizeCanvas('cam-1-canvas');
-        resizeCanvas('cam-2-canvas');
-    } else if (tabId === 'simbiose') {
-        resizeCanvas('network-canvas');
-    } else if (tabId === 'dashboard') {
-        resizeCanvas('quick-map-canvas');
+    // Leaflet map invalidateSize to prevent rendering glitches on hidden div display
+    setTimeout(() => {
+        if (tabId === 'cerebro' && brainMap) {
+            brainMap.invalidateSize();
+        } else if (tabId === 'twin' && twinMap) {
+            twinMap.invalidateSize();
+        } else if (tabId === 'dashboard' && quickMap) {
+            quickMap.invalidateSize();
+        }
+    }, 50);
+}
+
+// 3. LEAFLET MAPS INITIALIZATION
+function initLeafletMaps() {
+    if (quickMap) return; // Already init
+    
+    const tileLayerUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+    const tileAttribution = '&copy; OpenStreetMap &copy; CARTO';
+    
+    // 1. Quick Map (Dashboard view - stationary, no zoom controls)
+    quickMap = L.map('quick-map', {
+        zoomControl: false,
+        dragging: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        touchZoom: false
+    }).setView([-23.5615, -46.6562], 15);
+    
+    L.tileLayer(tileLayerUrl, { attribution: 'CARTO' }).addTo(quickMap);
+    quickMapRiskGroup = L.layerGroup().addTo(quickMap);
+    
+    // 2. Brain Map (Cérebro tab - interactive)
+    brainMap = L.map('brain-map', {
+        zoomControl: true,
+        preferCanvas: true
+    }).setView([-23.5615, -46.6562], 15);
+    
+    L.tileLayer(tileLayerUrl, { attribution: tileAttribution }).addTo(brainMap);
+    brainMapRiskGroup = L.layerGroup().addTo(brainMap);
+    
+    // Map Click handler to insert manual threat marker
+    brainMap.on('click', handleGeographicBrainMapClick);
+    
+    // 3. Twin Map (Gêmeos Digitais tab - interactive)
+    twinMap = L.map('twin-map', {
+        zoomControl: true,
+        preferCanvas: true
+    }).setView([-23.5615, -46.6562], 15);
+    
+    L.tileLayer(tileLayerUrl, { attribution: tileAttribution }).addTo(twinMap);
+    twinMapGroup = L.layerGroup().addTo(twinMap);
+    twinMapRoutesGroup = L.layerGroup().addTo(twinMap);
+    
+    // Initialize Twin Base Nodes / Markers
+    setupTwinGeographicMarkers();
+}
+
+function setupTwinGeographicMarkers() {
+    // Incident Marker MASP
+    const pulseIcon = L.divIcon({
+        className: 'custom-pulse-icon',
+        html: '<div style="width: 14px; height: 14px; background: #ff3860; border-radius:50%; box-shadow: 0 0 10px #ff3860; border: 2px solid white;"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
+    });
+    twinIncidentMarker = L.marker(twinGeographicNodes.A, { icon: pulseIcon }).addTo(twinMapGroup)
+        .bindPopup("<b>Epicentro do Incidente (MASP)</b><br>Ponto A");
+        
+    // Police Blockade B
+    const iconB = L.divIcon({
+        className: 'blockade-icon-b',
+        html: '<div style="width:16px; height:16px; background:#ff3860; color:white; border-radius:50%; font-size:9px; font-weight:bold; text-align:center; line-height:16px; border:1px solid white;">B</div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+    twinBlockadeBMarker = L.marker(twinGeographicNodes.B, { icon: iconB }).addTo(twinMapGroup)
+        .bindPopup("<b>Bloqueio Tático B</b><br>Al. Casa Branca x Al. Santos<br>Prob. Intercepção: 85%");
+        
+    // Police Blockade C
+    const iconC = L.divIcon({
+        className: 'blockade-icon-c',
+        html: '<div style="width:16px; height:16px; background:#ffb800; color:black; border-radius:50%; font-size:9px; font-weight:bold; text-align:center; line-height:16px; border:1px solid white;">C</div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+    twinBlockadeCMarker = L.marker(twinGeographicNodes.C, { icon: iconC }).addTo(twinMapGroup)
+        .bindPopup("<b>Bloqueio Tático C</b><br>Al. Pamplona x Al. Santos<br>Prob. Intercepção: 60%");
+        
+    // Draw Street Net Lines
+    twinGeographicEdges.forEach(edge => {
+        const start = twinGeographicNodes[edge[0]];
+        const end = twinGeographicNodes[edge[1]];
+        L.polyline([start, end], {
+            color: 'rgba(255, 255, 255, 0.15)',
+            weight: 2.5,
+            dashArray: '5, 5'
+        }).addTo(twinMapGroup);
+    });
+}
+
+function updateTwinMapIncidentMarker(latlng) {
+    if (twinIncidentMarker) {
+        twinIncidentMarker.setLatLng(latlng);
+        // Move camera to center
+        twinMap.panTo(latlng);
+        // Update coordinates in node A for Monte Carlo calculations
+        twinGeographicNodes.A = [latlng.lat, latlng.lng];
     }
 }
 
-// 3. CANVAS SETUP
-function initCanvases() {
-    brainCanvas = document.getElementById('brain-map-canvas');
-    brainCtx = brainCanvas.getContext('2d');
+// 4. DYNAMIC HEATMAP UPDATE
+function updateGeographicRisks() {
+    if (!quickMapRiskGroup || !brainMapRiskGroup) return;
     
-    quickCanvas = document.getElementById('quick-map-canvas');
-    quickCtx = quickCanvas.getContext('2d');
+    quickMapRiskGroup.clearLayers();
+    brainMapRiskGroup.clearLayers();
     
-    twinCanvas = document.getElementById('twin-canvas');
-    twinCtx = twinCanvas.getContext('2d');
-    
-    cam1Canvas = document.getElementById('cam-1-canvas');
-    cam1Ctx = cam1Canvas.getContext('2d');
-    
-    cam2Canvas = document.getElementById('cam-2-canvas');
-    cam2Ctx = cam2Canvas.getContext('2d');
-    
-    networkCanvas = document.getElementById('network-canvas');
-    networkCtx = networkCanvas.getContext('2d');
-    
-    // Make sure they have initial width and height
-    resizeAllCanvases();
-    window.addEventListener('resize', resizeAllCanvases);
-    
-    // Brain Map Interactions
-    brainCanvas.addEventListener('mousemove', handleBrainMapHover);
-    brainCanvas.addEventListener('click', handleBrainMapClick);
+    // Add dynamic circles to represent risk hotspots
+    state.riskLocations.forEach(loc => {
+        let climateMod = 0;
+        if(state.variables.weather === 'rainy') climateMod = 10;
+        else if(state.variables.weather === 'storm') climateMod = 25;
+        
+        let eventMod = 0;
+        if(state.variables.event === 'festive' && loc.name.includes("MASP")) eventMod = 35;
+        else if(state.variables.event === 'protest' && loc.name.includes("Augusta")) eventMod = 45;
+        
+        let economyMod = 0;
+        if(state.variables.economy === 'inflation') economyMod = 15;
+        
+        let risk = Math.min(Math.max(loc.baseRisk + climateMod + eventMod + economyMod, 5), 98);
+        
+        // Colors
+        let color = '#00ff88';
+        if (risk > 75) {
+            color = '#ff3860';
+        } else if (risk > 35) {
+            color = '#ffb800';
+        }
+        
+        const circleRadius = 35 + (risk * 0.9); // radius in meters
+        
+        // Render on Quick Map
+        L.circle(loc.coords, {
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.15 + (risk / 300),
+            weight: 1.5,
+            radius: circleRadius
+        }).addTo(quickMapRiskGroup);
+        
+        // Render on Brain Map
+        const circle = L.circle(loc.coords, {
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.15 + (risk / 300),
+            weight: 1.5,
+            radius: circleRadius
+        }).addTo(brainMapRiskGroup);
+        
+        circle.bindPopup(`
+            <b>${loc.name}</b><br>
+            Risco Espaçotemporal: <span style="color:${color}; font-weight:bold;">${risk}%</span><br>
+            Clima: ${state.variables.weather.toUpperCase()}<br>
+            Status Eventos: ${state.variables.event.toUpperCase()}
+        `);
+    });
 }
 
-function resizeCanvas(id) {
-    const canvas = document.getElementById(id);
-    if (!canvas) return;
-    const parent = canvas.parentElement;
-    canvas.width = parent.clientWidth;
-    canvas.height = parent.clientHeight || 300;
+function handleGeographicBrainMapClick(e) {
+    const latlng = e.latlng;
+    
+    // Inject custom hotspot to Paulista region list
+    const newHotspot = {
+        name: `Sensor Customizado (${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)})`,
+        coords: [latlng.lat, latlng.lng],
+        baseRisk: 80
+    };
+    
+    state.riskLocations.push(newHotspot);
+    updateGeographicRisks();
+    
+    // Add anomaly report
+    state.anomalies.unshift({
+        id: Date.now(),
+        title: "Ponto de Risco Injetado",
+        type: "danger",
+        text: `Alerta manual de ameaça cadastrado nas coordenadas reais [${latlng.lat.toFixed(5)}, ${latlng.lng.toFixed(5)}].`,
+        time: getShortTime(),
+        stat: `Coordenada: ${latlng.lat.toFixed(4)} N`
+    });
+    renderAnomalies();
+    
+    // Mirror incident coordinates to Twin Map
+    updateTwinMapIncidentMarker(latlng);
 }
 
-function resizeAllCanvases() {
-    resizeCanvas('brain-map-canvas');
-    resizeCanvas('quick-map-canvas');
-    resizeCanvas('twin-canvas');
-    resizeCanvas('cam-1-canvas');
-    resizeCanvas('cam-2-canvas');
-    resizeCanvas('network-canvas');
-}
-
-// 4. SELECTORS (Brain correlation variables)
+// 5. SELECTORS VARIABLES CONTROLS
 function initSelectors() {
     const setSelectorEvents = (containerId, stateKey) => {
         const container = document.getElementById(containerId);
@@ -253,8 +429,8 @@ function initSelectors() {
                 btn.classList.add('active');
                 state.variables[stateKey] = btn.getAttribute('data-value');
                 
-                // Recalculate everything
-                generateBrainMap();
+                // Redraw maps and calculate briefings
+                updateGeographicRisks();
                 updateBriefingText();
                 triggerDynamicAnomaly();
             });
@@ -266,50 +442,7 @@ function initSelectors() {
     setSelectorEvents('economy-selectors', 'economy');
 }
 
-// 5. STOCHASTIC BRAIN GRID GENERATION
-function generateBrainMap() {
-    state.brainRiskMap = [];
-    const size = 8;
-    
-    // Variable modifiers
-    let climateMod = 0;
-    if(state.variables.weather === 'rainy') climateMod = 12;
-    else if(state.variables.weather === 'storm') climateMod = 28;
-    
-    let eventMod = 0;
-    if(state.variables.event === 'festive') eventMod = 35;
-    else if(state.variables.event === 'protest') eventMod = 45;
-    
-    let economyMod = 0;
-    if(state.variables.economy === 'inflation') economyMod = 20;
-
-    for (let r = 0; r < size; r++) {
-        state.brainRiskMap[r] = [];
-        for (let c = 0; c < size; c++) {
-            // Base pattern simulating city streets vs empty spots
-            let base = ((r * c + r * 4 + c * 3) % 45) + 10;
-            
-            // Add specific hot zones
-            if (r === 4 && c === 4) base += 30; // Center Plaza
-            if (r === 2 && c === 6) base += 25; // Augusta corner
-            
-            // Apply modifiers
-            let finalVal = base + climateMod + eventMod + economyMod;
-            
-            // If protest, shift risk toward top-left (e.g. government district)
-            if (state.variables.event === 'protest' && r < 3 && c < 3) {
-                finalVal += 20;
-            }
-            
-            // Keep bounds
-            finalVal = Math.min(Math.max(Math.round(finalVal), 5), 98);
-            
-            state.brainRiskMap[r][c] = finalVal;
-        }
-    }
-}
-
-// Update text breakdown of correlations
+// 6. BRIEFING GENERATION
 function updateBriefingText() {
     const textEl = document.getElementById('correlation-analysis-text');
     const briefingEl = document.getElementById('cognitive-briefing-text');
@@ -322,29 +455,29 @@ function updateBriefingText() {
     let brief = "";
     
     if (w === 'sunny' && e === 'none' && ec === 'normal') {
-        analysis = "O clima está estável e o fluxo de pessoas na região comercial está em conformidade. O Sentinel trabalha com risco basal de 12%. As variáveis econômicas não indicam estresse na malha.";
+        analysis = "O clima na Av. Paulista está estável e o fluxo de pessoas na região comercial está em conformidade. O Sentinel trabalha com risco basal de 12%. As variáveis econômicas não indicam estresse na malha.";
         brief = briefings.default;
     } else {
         analysis = "SENTINEL DETECTOU CORRELAÇÕES AUMENTADAS: ";
         
         if (w === 'storm') {
-            analysis += "Tempestades severas diminuem crimes nas ruas (-30% ao ar livre), mas criam gargalos em hubs subterrâneos de transporte (Metrô: +45% risco estocástico). ";
+            analysis += "Tempestades severas diminuem crimes nas ruas (-30% ao ar livre), mas criam gargalos em hubs subterrâneos de transporte (Metrô Consolação: +45% risco estocástico). ";
             brief = briefings.storm;
         } else if (w === 'rainy') {
-            analysis += "Chuva leve aumenta roubos de pertences e aparelhos móveis próximos a paradas de ônibus em 15% devido à distração e ao agrupamento de pedestres. ";
+            analysis += "Chuva leve aumenta roubos de pertences e aparelhos móveis próximos a paradas de ônibus em 15% devido à distração e ao agrupamento de pedestres na Av. Paulista. ";
             brief = briefings.rainy;
         }
         
         if (e === 'festive') {
-            analysis += "O evento festivo na Praça central atrai grandes massas, concentrando o risco de furto oportunista na coordenada (4,4). ";
+            analysis += "O evento comemorativo no vão livre do MASP atrai grandes massas, concentrando o risco de furto oportunista na coordenada principal. ";
             brief = briefings.festive;
         } else if (e === 'protest') {
-            analysis += "A manifestação perturba o fluxo social regular. Detectados agrupamentos anômalos nas adjacências do polo administrativo (2,2). ";
+            analysis += "A manifestação bloqueia vias. Detectados desvios comportamentais coletivos na Augusta e imediações paulistas. ";
             brief = briefings.protest;
         }
         
         if (ec === 'inflation') {
-            analysis += "Alerta estocástico: A queda de 20% no fluxo de pedestres remove a vigilância social natural das vias residenciais, elevando a probabilidade de intrusões em 22%. ";
+            analysis += "Alerta estocástico: A queda de 20% no fluxo de pedestres remove a vigilância social natural das vias residenciais adjacentes, elevando risco de invasões residenciais secundárias em 22%. ";
             if (!brief) brief = briefings.inflation;
         }
     }
@@ -353,86 +486,21 @@ function updateBriefingText() {
     briefingEl.innerHTML = brief;
 }
 
-// Dynamically trigger anomalies on variable shift
 function triggerDynamicAnomaly() {
     if (state.variables.economy === 'inflation') {
-        // Add low flow anomaly
         const exists = state.anomalies.some(a => a.title.includes("Fluxo de Pedestres"));
         if (!exists) {
             state.anomalies.unshift({
                 id: Date.now(),
                 title: "Queda Crítica de Fluxo de Pedestres",
                 type: "danger",
-                text: "Rua Augusta (Zona Sul) registrou queda repentina de 22% no fluxo de pedestres sem ocorrências climáticas atípicas.",
+                text: "Al. Santos registrou queda repentina de 22% no fluxo de pedestres sem ocorrências climáticas atípicas.",
                 time: getShortTime(),
                 stat: "Variância Estocástica: σ=4.2"
             });
             renderAnomalies();
         }
     }
-    
-    if (state.variables.event === 'protest') {
-        const exists = state.anomalies.some(a => a.title.includes("Comportamental Coletivo"));
-        if (!exists) {
-            state.anomalies.unshift({
-                id: Date.now(),
-                title: "Desvio Comportamental Coletivo",
-                type: "danger",
-                text: "Movimento errático em massa detectado nas vias de acesso à praça central. Vetores de dispersão atípicos.",
-                time: getShortTime(),
-                stat: "Grau de Dispersão: 8.4"
-            });
-            renderAnomalies();
-        }
-    }
-}
-
-// 6. MAP HOVER & CLICKS (Brain Canvas)
-let hoveredCell = null;
-function handleBrainMapHover(e) {
-    const canvas = brainCanvas;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const size = 8;
-    const cellW = canvas.width / size;
-    const cellH = canvas.height / size;
-    
-    const c = Math.floor(x / cellW);
-    const r = Math.floor(y / cellH);
-    
-    if (r >= 0 && r < size && c >= 0 && c < size) {
-        hoveredCell = { r, c };
-    } else {
-        hoveredCell = null;
-    }
-}
-
-function handleBrainMapClick(e) {
-    if (!hoveredCell) return;
-    const { r, c } = hoveredCell;
-    
-    // Inject a manual anomaly/incident
-    state.brainRiskMap[r][c] = 95; // Risk spiked
-    
-    // Add anomaly report
-    state.anomalies.unshift({
-        id: Date.now(),
-        title: `Alerta no Sensor (${r},${c})`,
-        type: "danger",
-        text: `Spike de risco manual inserido no quadrante urbano da coordenada de grade [${r}, ${c}]. Análise preditiva recalculando rotas.`,
-        time: getShortTime(),
-        stat: "Risco Spiked: 95%"
-    });
-    
-    renderAnomalies();
-    
-    // Trigger effect in twin too if available
-    state.monteCarlo.incidentPoint = {
-        x: 50 + c * 50,
-        y: 50 + r * 45
-    };
 }
 
 // 7. NLP REPORT PIPELINE
@@ -469,19 +537,16 @@ function renderNLPReports() {
         `;
     };
     
-    // Render to dashboard (quick view - first 2 reports)
     if (quickFeed) {
         quickFeed.innerHTML = state.nlpReports.slice(0, 2).map(generateHtml).join('');
     }
     
-    // Render to full tab view
     if (fullFeed) {
         fullFeed.innerHTML = state.nlpReports.map(generateHtml).join('');
     }
     
-    // Update dashboard counter
     const counter = document.getElementById('dash-nlp-count');
-    if (counter) counter.textContent = state.nlpReports.length + 1486; // add base dummy count
+    if (counter) counter.textContent = state.nlpReports.length + 1486;
 }
 
 function updateSliderVal(val) {
@@ -495,45 +560,38 @@ function handleNewReportSubmit(event) {
     const reliability = parseInt(document.getElementById('report-reliability').value);
     const text = document.getElementById('report-text').value;
     
-    // MOCK NLP PIPELINE
     let sentiment = "Neutro";
     let urgency = "baixa";
     let keywords = [];
-    
     const textLower = text.toLowerCase();
     
-    if (textLower.includes('assalto') || textLower.includes('arma') || textLower.includes('roubo') || textLower.includes('faca') || textLower.includes('invadindo') || textLower.includes('arrastão')) {
+    if (textLower.includes('assalto') || textLower.includes('arma') || textLower.includes('roubo') || textLower.includes('faca') || textLower.includes('invadindo')) {
         urgency = "alta";
         sentiment = "Crítico / Urgente";
         keywords.push("Ameaça Física");
-    } else if (textLower.includes('suspeito') || textLower.includes('rondando') || textLower.includes('escuro') || textLower.includes('quebrada') || textLower.includes('estranho') || textLower.includes('banco')) {
+    } else if (textLower.includes('suspeito') || textLower.includes('rondando') || textLower.includes('escuro') || textLower.includes('quebrada')) {
         urgency = "media";
         sentiment = "Alerta Comportamental";
-        keywords.push("Prevenção / Suspeita");
+        keywords.push("Suspeita");
     } else {
         urgency = "baixa";
         sentiment = "Informativo";
         keywords.push("Infraestrutura");
     }
     
-    // Extract location mock
-    let location = "Não identificada";
-    if (textLower.includes('augusta') || textLower.includes('zona sul')) {
-        location = "Rua Augusta - Zona Sul";
-    } else if (textLower.includes('centro') || textLower.includes('praça') || textLower.includes('república')) {
-        location = "Praça da República - Centro";
-    } else if (textLower.includes('principal') || textLower.includes('avenida')) {
-        location = "Av. Principal";
-    } else {
-        location = "Coordenadas Dinâmicas GPS";
-    }
+    let location = "Av. Paulista - Geral";
+    let coords = [-23.5615, -46.6562]; // MASP
     
-    // Extract keywords
-    const matches = text.match(/\b(banco|poste|farmácia|rua|loja|escuro|barulho|grupo|carro|moto)\b/gi);
-    if (matches) {
-        keywords = [...keywords, ...matches.map(m => m.toLowerCase())];
+    if (textLower.includes('augusta')) {
+        location = "Rua Augusta";
+        coords = [-23.5595, -46.6585];
+    } else if (textLower.includes('pamplona')) {
+        location = "Al. Pamplona";
+        coords = [-23.5632, -46.6542];
+    } else if (textLower.includes('santos')) {
+        location = "Al. Santos";
+        coords = [-23.5650, -46.6558];
     }
-    keywords = [...new Set(keywords)]; // remove duplicates
     
     const newReport = {
         id: Date.now(),
@@ -549,38 +607,29 @@ function handleNewReportSubmit(event) {
         }
     };
     
-    // Push report
     state.nlpReports.unshift(newReport);
-    
-    // Render and reset form
     renderNLPReports();
     document.getElementById('report-input-form').reset();
     document.getElementById('reliability-val').textContent = '85%';
     
-    // Affect risk grid directly where location matches
-    if (location.includes("Zona Sul")) {
-        state.brainRiskMap[6][2] = Math.min(state.brainRiskMap[6][2] + 40, 99);
-    } else if (location.includes("Centro")) {
-        state.brainRiskMap[4][4] = Math.min(state.brainRiskMap[4][4] + 35, 99);
-    } else {
-        // Random spot
-        const randR = Math.floor(Math.random() * 8);
-        const randC = Math.floor(Math.random() * 8);
-        state.brainRiskMap[randR][randC] = Math.min(state.brainRiskMap[randR][randC] + 30, 99);
-    }
+    // Inject threat circle at coordinates derived from NLP
+    state.riskLocations.push({
+        name: `Relato NLP: ${author}`,
+        coords: coords,
+        baseRisk: urgency === 'alta' ? 85 : 55
+    });
+    updateGeographicRisks();
     
-    // Trigger anomaly
     state.anomalies.unshift({
         id: Date.now(),
-        title: `Relato Triado: Urgência ${urgency.toUpperCase()}`,
+        title: `NLP Alerta: ${urgency.toUpperCase()}`,
         type: urgency === 'alta' ? 'danger' : 'warning',
-        text: `NLP analisou relato de ${author} (${reliability}% conf.). Extraído risco na área: ${location}.`,
+        text: `Relato sobre ${location} processado. Risco espacial adicionado ao sistema.`,
         time: getShortTime(),
-        stat: `Entidades: ${keywords.join(', ')}`
+        stat: `Score Fonte: ${reliability}%`
     });
     renderAnomalies();
     
-    // Highlight dashboard count
     state.systemMetrics.totalReports++;
 }
 
@@ -589,7 +638,7 @@ function clearReportLogs() {
     renderNLPReports();
 }
 
-// 8. ANOMALIES RENDERING
+// 8. ANOMALIES FEED
 function renderAnomalies() {
     const feed = document.getElementById('brain-anomaly-feed');
     if (!feed) return;
@@ -605,7 +654,7 @@ function renderAnomalies() {
                 <div class="anomaly-body">${anom.text}</div>
                 <div class="anomaly-stat">
                     <span>Métrica: ${anom.stat}</span>
-                    <span>Status: Em Investigação</span>
+                    <span>Status: Ativo</span>
                 </div>
             </div>
         `;
@@ -615,43 +664,22 @@ function renderAnomalies() {
     if (countEl) countEl.textContent = state.anomalies.length;
 }
 
-// 9. MONTE CARLO SIMULATOR & DIGITAL TWIN
-// Let's model a graph city grid
-const twinNodes = {
-    A: { x: 80, y: 220, label: "Incidente A" },
-    B: { x: 300, y: 120, label: "Bloqueio B" },
-    C: { x: 320, y: 320, label: "Bloqueio C" },
-    D: { x: 180, y: 150 },
-    E: { x: 220, y: 280 },
-    F: { x: 420, y: 220, label: "Escape Central" },
-    G: { x: 480, y: 90, label: "Fuga Norte" },
-    H: { x: 500, y: 350, label: "Fuga Sul" }
-};
-
-const twinEdges = [
-    ['A', 'D'], ['A', 'E'],
-    ['D', 'B'], ['D', 'E'],
-    ['E', 'C'], ['E', 'D'],
-    ['B', 'F'], ['C', 'F'],
-    ['B', 'G'], ['F', 'G'],
-    ['C', 'H'], ['F', 'H']
-];
-
+// 9. MONTE CARLO ESCAPE GRAPH ROUTINE
 function triggerIncident() {
-    // Generate incident at a random node, or pick Node A
-    state.monteCarlo.incidentPoint = { x: 80, y: 220 };
+    // Incident MASP coordinate
+    const maspCoords = twinGeographicNodes.A;
+    updateTwinMapIncidentMarker(L.latLng(maspCoords[0], maspCoords[1]));
     
     state.anomalies.unshift({
         id: Date.now(),
-        title: "Incidente Tático Ativado",
+        title: "Incidente Iniciado (MASP)",
         type: "danger",
-        text: "Gêmeo digital disparou alerta de fuga coordenada a partir do Ponto A. Rodar simulações de Monte Carlo.",
+        text: "Alerta de fuga a partir do vão livre do MASP. Iniciando simulações de rota de interceptação.",
         time: getShortTime(),
-        stat: "Nós de interceptação: B e C"
+        stat: "Fuga: Av. Paulista"
     });
     renderAnomalies();
     
-    // Automatically start simulation
     startMonteCarloSimulation();
 }
 
@@ -661,7 +689,6 @@ function startMonteCarloSimulation() {
     state.monteCarlo.isRunning = true;
     state.monteCarlo.progress = 0;
     state.monteCarlo.routes = [];
-    state.monteCarlo.escapeCount = 0;
     
     const fillEl = document.getElementById('monte-carlo-fill');
     const statusEl = document.getElementById('monte-carlo-status');
@@ -669,14 +696,12 @@ function startMonteCarloSimulation() {
     
     btnEl.disabled = true;
     btnEl.textContent = "Simulando...";
-    statusEl.textContent = "Simulando caminhos...";
+    statusEl.textContent = "Calculando caminhos...";
     statusEl.style.color = "var(--color-warning)";
     
-    // Reset probabilities visual
-    document.getElementById('prob-ptb').textContent = '--%';
-    document.getElementById('prob-ptc').textContent = '--%';
+    // Clear old route lines
+    twinMapRoutesGroup.clearLayers();
     
-    // Monte Carlo loops over multiple frames
     const totalSims = 10000;
     const simsPerFrame = 500;
     
@@ -686,19 +711,16 @@ function startMonteCarloSimulation() {
             return;
         }
         
-        // Generate simulated escape paths
         for (let i = 0; i < simsPerFrame; i++) {
             const path = simulateSingleEscapePath();
             state.monteCarlo.routes.push(path);
             state.monteCarlo.progress++;
         }
         
-        // Calculate intermediate probabilities
         const currentProgress = state.monteCarlo.progress;
         const fillPercent = (currentProgress / totalSims) * 100;
         fillEl.style.width = `${fillPercent}%`;
         
-        // Update counts
         let hitB = 0;
         let hitC = 0;
         state.monteCarlo.routes.forEach(p => {
@@ -712,6 +734,11 @@ function startMonteCarloSimulation() {
         document.getElementById('prob-ptb').textContent = `${pb}%`;
         document.getElementById('prob-ptc').textContent = `${pc}%`;
         
+        // Visually draw a subset of lines on Leaflet map dynamically during progress
+        if (state.monteCarlo.progress % 1000 === 0) {
+            drawVisualGeographicRoutes(5); // Draw a few lines to represent progress
+        }
+        
         requestAnimationFrame(runSimChunk);
     }
     
@@ -719,53 +746,65 @@ function startMonteCarloSimulation() {
 }
 
 function simulateSingleEscapePath() {
-    // Escape starts at A and hops to nodes until it reaches G, H or F (exit nodes)
     let currentNode = 'A';
     const path = [currentNode];
     let hitNode = null;
+    let loops = 0;
     
-    let iterations = 0;
-    while (currentNode !== 'G' && currentNode !== 'H' && currentNode !== 'F' && iterations < 10) {
-        iterations++;
-        // Find edges connected to current
+    while (currentNode !== 'G' && currentNode !== 'H' && currentNode !== 'F' && loops < 12) {
+        loops++;
         const neighbors = [];
-        twinEdges.forEach(edge => {
+        twinGeographicEdges.forEach(edge => {
             if (edge[0] === currentNode) neighbors.push(edge[1]);
             else if (edge[1] === currentNode) neighbors.push(edge[0]);
         });
         
-        // Pick a neighbor with weights favoring escaping (going right)
-        // Nodes positions: A(80) -> D(180) -> B(300) -> F(420) -> G(480)
-        // Make random choice biased toward larger X
+        if (neighbors.length === 0) break;
         let nextNode = neighbors[Math.floor(Math.random() * neighbors.length)];
         
-        // Dynamic barrier: if police are blockading, decrease probability of taking that path
-        // For demonstration, let's say police at B blocked 85% of paths passing B, at C blocked 60%.
+        // Police check blockade rates
         if (nextNode === 'B' && Math.random() < 0.85) {
             hitNode = 'B';
             path.push('B');
-            break; // Intercepted at B!
+            break;
         }
-        
         if (nextNode === 'C' && Math.random() < 0.60) {
             hitNode = 'C';
             path.push('C');
-            break; // Intercepted at C!
+            break;
         }
         
         currentNode = nextNode;
         path.push(currentNode);
     }
     
-    if (!hitNode) {
-        // Escaped successfully
-        hitNode = 'ESCAPED';
-    }
+    if (!hitNode) hitNode = 'ESCAPED';
     
-    return {
-        path: path,
-        hitNode: hitNode
-    };
+    return { path, hitNode };
+}
+
+function drawVisualGeographicRoutes(count) {
+    // Select routes to plot on Leaflet
+    const startIdx = Math.max(0, state.monteCarlo.routes.length - count);
+    const endIdx = state.monteCarlo.routes.length;
+    
+    for (let i = startIdx; i < endIdx; i++) {
+        const route = state.monteCarlo.routes[i];
+        
+        // Route color based on outcome
+        let color = '#00ff88'; // Escaped
+        if (route.hitNode === 'B') color = '#ff3860'; // Caught B
+        else if (route.hitNode === 'C') color = '#ffb800'; // Caught C
+        
+        const coordsPath = route.path.map(nodeKey => twinGeographicNodes[nodeKey]).filter(Boolean);
+        
+        L.polyline(coordsPath, {
+            color: color,
+            weight: 2,
+            opacity: 0.45,
+            smoothFactor: 1.0
+        }).addTo(twinMapRoutesGroup);
+    }
 }
 
 function finishMonteCarlo() {
@@ -773,18 +812,13 @@ function finishMonteCarlo() {
     
     const statusEl = document.getElementById('monte-carlo-status');
     const btnEl = document.getElementById('btn-montecarlo');
-    
     btnEl.disabled = false;
     btnEl.textContent = "Executar Monte Carlo";
     
-    statusEl.textContent = "Concluído";
+    statusEl.textContent = "Simulado";
     statusEl.style.color = "var(--color-success)";
     
-    // Calculate final results
-    let hitB = 0;
-    let hitC = 0;
-    let escaped = 0;
-    
+    let hitB = 0; let hitC = 0; let escaped = 0;
     state.monteCarlo.routes.forEach(p => {
         if (p.hitNode === 'B') hitB++;
         else if (p.hitNode === 'C') hitC++;
@@ -797,7 +831,6 @@ function finishMonteCarlo() {
     document.getElementById('prob-ptb').textContent = `${pb}%`;
     document.getElementById('prob-ptc').textContent = `${pc}%`;
     
-    // Update recommendation text
     const probBestEl = document.getElementById('prob-best');
     if (pb > pc) {
         probBestEl.textContent = `Ponto B (${pb}% Eficácia)`;
@@ -807,21 +840,23 @@ function finishMonteCarlo() {
         probBestEl.className = "prob-val success";
     }
     
-    // Add logs
+    // Draw clean final routes layout representing the flows (plot 120 lines total)
+    twinMapRoutesGroup.clearLayers();
+    drawVisualGeographicRoutes(120);
+    
     state.anomalies.unshift({
         id: Date.now(),
-        title: "Monte Carlo Concluído",
+        title: "Rede Monte Carlo Concluída",
         type: "warning",
-        text: `10k simulações rodadas. Probabilidade de interceptação em B: ${pb}%, em C: ${pc}%. Recomendado reforçar Ponto ${pb > pc ? 'B' : 'C'}.`,
+        text: `Cálculo concluído no grafo da Paulista. Intercepção ideal: Ponto ${pb > pc ? 'B' : 'C'} (${Math.max(pb, pc)}% de sucesso).`,
         time: getShortTime(),
-        stat: `Taxa de Fuga: ${Math.round((escaped/10000)*100)}%`
+        stat: `Rotas Livres: ${Math.round((escaped/10000)*100)}%`
     });
     renderAnomalies();
 }
 
-// 10. HUMAN FEEDBACK LOOP & BRAIN SYMBIOSE CALIBRATION
+// 10. NEURAL CALIBRATION & HUMAN FEEDBACK
 function submitHumanFeedback(type, element) {
-    // Toggle active design class
     document.querySelectorAll('.feedback-card').forEach(el => el.classList.remove('selected'));
     element.classList.add('selected');
     
@@ -829,279 +864,74 @@ function submitHumanFeedback(type, element) {
     weightsStatusEl.textContent = "Calibrando...";
     weightsStatusEl.style.color = "var(--color-warning)";
     
-    // Adjust weights based on input
-    // weights schema: InputVariable: [WeightRiscoGeral, WeightFurto, WeightAssalto]
     setTimeout(() => {
         if (type === 'confirm') {
-            // Relatos input gets heavier weighting, flow anomaly increases
             state.humanSymbiosis.weights["Relatos"][0] = Math.min(state.humanSymbiosis.weights["Relatos"][0] + 0.08, 0.99);
             state.humanSymbiosis.weights["Fluxo"][1] = Math.min(state.humanSymbiosis.weights["Fluxo"][1] + 0.06, 0.99);
         } else if (type === 'deny') {
-            // Relatos weights drop since it was a false alert
             state.humanSymbiosis.weights["Relatos"][0] = Math.max(state.humanSymbiosis.weights["Relatos"][0] - 0.12, 0.20);
         } else if (type === 'low_light') {
-            // Light (Iluminação) node weight rises drastically
             state.humanSymbiosis.weights["Iluminação"][0] = Math.min(state.humanSymbiosis.weights["Iluminação"][0] + 0.15, 0.99);
             state.humanSymbiosis.weights["Iluminação"][2] = Math.min(state.humanSymbiosis.weights["Iluminação"][2] + 0.12, 0.99);
         }
         
-        weightsStatusEl.textContent = "Readequada";
+        weightsStatusEl.textContent = "Calibrada";
         weightsStatusEl.style.color = "var(--color-success)";
         
-        // Trigger flash in network weights
         triggerNetworkCalibrationAnimation();
         
-        // Add log
         state.anomalies.unshift({
             id: Date.now(),
-            title: "Pesos Calibrados",
+            title: "Pesos Táticos Ajustados",
             type: "warning",
-            text: `Feedback de campo recebido (${type.toUpperCase()}). Conexões neurais de correlação readequadas em tempo real.`,
+            text: `Feedback simbiótico registrado: ${type.toUpperCase()}. Rede neural otimizada.`,
             time: getShortTime(),
-            stat: `Confiança Modelo: ${state.systemMetrics.precision}%`
+            stat: `Precisão: ${state.systemMetrics.precision}%`
         });
         renderAnomalies();
-        
     }, 800);
 }
 
-// Spark calibration lines glow
 let calibrationPulseTime = 0;
 function triggerNetworkCalibrationAnimation() {
-    calibrationPulseTime = 30; // 30 frames of bright pulse
+    calibrationPulseTime = 30;
 }
 
-// 11. MAIN RENDERING LOOP (Runs every frame to draw canvases)
-function mainLoop(timestamp) {
-    if (state.activeTab === 'dashboard') {
-        drawRiskMap(quickCanvas, quickCtx);
-    } else if (state.activeTab === 'cerebro') {
-        drawRiskMap(brainCanvas, brainCtx);
-    } else if (state.activeTab === 'twin') {
-        drawDigitalTwin();
-        drawCVCamera(cam1Canvas, cam1Ctx, 'South Zone', 0.002);
-        drawCVCamera(cam2Canvas, cam2Ctx, 'Central Hub', 0.005, true); // contains anomalous activity
-    } else if (state.activeTab === 'simbiose') {
-        drawNeuralNetwork();
-    }
+// 11. CAMERAS & NON-MAP GRAPHICS SYSTEM
+function initCanvases() {
+    cam1Canvas = document.getElementById('cam-1-canvas');
+    cam1Ctx = cam1Canvas.getContext('2d');
     
-    requestAnimationFrame(mainLoop);
+    cam2Canvas = document.getElementById('cam-2-canvas');
+    cam2Ctx = cam2Canvas.getContext('2d');
+    
+    networkCanvas = document.getElementById('network-canvas');
+    networkCtx = networkCanvas.getContext('2d');
+    
+    resizeCameraCanvases();
 }
 
-// Helper to draw risk maps
-function drawRiskMap(canvas, ctx) {
-    if (!canvas || !ctx) return;
-    
-    const size = 8;
-    const cellW = canvas.width / size;
-    const cellH = canvas.height / size;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw cells
-    for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-            const risk = state.brainRiskMap[r][c] || 10;
-            
-            // Choose color based on risk
-            let color = 'rgba(0, 255, 136, 0.15)'; // Low
-            if (risk > 75) {
-                color = `rgba(255, 56, 96, ${0.2 + (risk-70)/60})`; // High
-            } else if (risk > 35) {
-                color = `rgba(255, 184, 0, ${0.15 + (risk-30)/100})`; // Medium
-            }
-            
-            ctx.fillStyle = color;
-            ctx.fillRect(c * cellW, r * cellH, cellW - 1, cellH - 1);
-            
-            // Draw grid line borders
-            ctx.strokeStyle = 'rgba(255,255,255,0.02)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(c * cellW, r * cellH, cellW, cellH);
-            
-            // Text value inside cell (only if hovered or high resolution)
-            if (canvas.width > 350) {
-                ctx.fillStyle = risk > 75 ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)';
-                ctx.font = '9px JetBrains Mono';
-                ctx.fillText(`${risk}%`, c * cellW + 6, r * cellH + 16);
-            }
-        }
-    }
-    
-    // Hover styling
-    if (hoveredCell && canvas === brainCanvas) {
-        const { r, c } = hoveredCell;
-        ctx.strokeStyle = 'var(--color-primary)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(c * cellW, r * cellH, cellW, cellH);
-        
-        ctx.fillStyle = 'rgba(0, 210, 255, 0.1)';
-        ctx.fillRect(c * cellW, r * cellH, cellW, cellH);
-    }
-    
-    // Draw visual scanning overlay sweep bar
-    const sweepY = (Math.sin(Date.now() / 800) * 0.5 + 0.5) * canvas.height;
-    ctx.strokeStyle = 'rgba(0, 210, 255, 0.15)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, sweepY);
-    ctx.lineTo(canvas.width, sweepY);
-    ctx.stroke();
-    
-    // Scan line gradient glow
-    const grad = ctx.createLinearGradient(0, sweepY - 30, 0, sweepY + 30);
-    grad.addColorStop(0, 'rgba(0, 210, 255, 0)');
-    grad.addColorStop(0.5, 'rgba(0, 210, 255, 0.06)');
-    grad.addColorStop(1, 'rgba(0, 210, 255, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, sweepY - 30, canvas.width, 60);
+function resizeCameraCanvases() {
+    const resizeSingle = (canvas) => {
+        if (!canvas) return;
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight || 220;
+    };
+    resizeSingle(cam1Canvas);
+    resizeSingle(cam2Canvas);
+    resizeSingle(networkCanvas);
 }
 
-// Helper to draw the isometric-ish 3D Digital Twin Map
-function drawDigitalTwin() {
-    const canvas = twinCanvas;
-    const ctx = twinCtx;
-    if (!canvas || !ctx) return;
-    
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw background grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-    ctx.lineWidth = 1;
-    const gridSpacing = 40;
-    for (let x = 0; x < canvas.width; x += gridSpacing) {
-        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += gridSpacing) {
-        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
-    
-    // Draw building blocks (procedural visual polygons)
-    const blocks = [
-        { x: 130, y: 50, w: 90, h: 60 },
-        { x: 50, y: 120, w: 70, h: 70 },
-        { x: 230, y: 150, w: 60, h: 100 },
-        { x: 130, y: 280, w: 80, h: 80 },
-        { x: 350, y: 50, w: 100, h: 50 },
-        { x: 380, y: 250, w: 70, h: 80 }
-    ];
-    
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.6)';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    
-    blocks.forEach(b => {
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-        ctx.strokeRect(b.x, b.y, b.w, b.h);
-        
-        // Draw 3D extrusion top lines (flat pseudo-3D representation)
-        ctx.strokeStyle = 'rgba(0, 210, 255, 0.08)';
-        ctx.strokeRect(b.x - 3, b.y - 3, b.w, b.h);
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y); ctx.lineTo(b.x - 3, b.y - 3);
-        ctx.moveTo(b.x + b.w, b.y); ctx.lineTo(b.x + b.w - 3, b.y - 3);
-        ctx.moveTo(b.x, b.y + b.h); ctx.lineTo(b.x - 3, b.y + b.h - 3);
-        ctx.moveTo(b.x + b.w, b.y + b.h); ctx.lineTo(b.x + b.w - 3, b.y + b.h - 3);
-        ctx.stroke();
-    });
-    
-    // Draw Graph edges (Streets connection lines)
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 2;
-    twinEdges.forEach(edge => {
-        const n1 = twinNodes[edge[0]];
-        const n2 = twinNodes[edge[1]];
-        if(n1 && n2) {
-            ctx.beginPath();
-            ctx.moveTo(n1.x, n1.y);
-            ctx.lineTo(n2.x, n2.y);
-            ctx.stroke();
-        }
-    });
-    
-    // Draw Simulated Monte Carlo Paths if running or completed
-    if (state.monteCarlo.routes.length > 0) {
-        ctx.lineWidth = 1.5;
-        // Limit paths drawn to keep performance high
-        const drawLimit = Math.min(state.monteCarlo.routes.length, 180);
-        
-        for (let i = 0; i < drawLimit; i++) {
-            const route = state.monteCarlo.routes[i];
-            
-            if (route.hitNode === 'B') ctx.strokeStyle = 'rgba(255, 56, 96, 0.18)';
-            else if (route.hitNode === 'C') ctx.strokeStyle = 'rgba(255, 184, 0, 0.18)';
-            else ctx.strokeStyle = 'rgba(0, 255, 136, 0.18)';
-            
-            ctx.beginPath();
-            const startNode = twinNodes[route.path[0]];
-            ctx.moveTo(startNode.x, startNode.y);
-            
-            for (let j = 1; j < route.path.length; j++) {
-                const nodeVal = twinNodes[route.path[j]];
-                if (nodeVal) {
-                    ctx.lineTo(nodeVal.x, nodeVal.y);
-                }
-            }
-            ctx.stroke();
-        }
-    }
-    
-    // Draw Incident point A glow
-    const pA = twinNodes.A;
-    const pulseRadius = 10 + Math.sin(Date.now() / 150) * 4;
-    ctx.fillStyle = 'rgba(255, 56, 96, 0.2)';
-    ctx.beginPath();
-    ctx.arc(pA.x, pA.y, pulseRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'var(--color-danger)';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    
-    // Draw Blockade node labels B and C
-    ['B', 'C'].forEach(lbl => {
-        const node = twinNodes[lbl];
-        ctx.fillStyle = lbl === 'B' ? 'var(--color-danger)' : 'var(--color-warning)';
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px var(--font-sans)';
-        ctx.fillText(lbl, node.x - 3, node.y - 10);
-    });
-    
-    // Draw exit nodes and others
-    for (const key in twinNodes) {
-        if(key !== 'A' && key !== 'B' && key !== 'C') {
-            const node = twinNodes[key];
-            ctx.fillStyle = 'rgba(0, 210, 255, 0.6)';
-            ctx.beginPath();
-            ctx.arc(node.x, node.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            if (node.label) {
-                ctx.fillStyle = 'var(--text-muted)';
-                ctx.font = '8px var(--font-mono)';
-                ctx.fillText(node.label, node.x + 8, node.y + 3);
-            }
-        }
-    }
-}
-
-// Non-invasive CV Cameras Simulation Renderer
+// CV pedestrian shapes for feeds
 const cvPedestriansCam1 = [
-    { x: 30, y: 150, vx: 0.2, vy: 0.1, radius: 8 },
-    { x: 180, y: 80, vx: -0.15, vy: 0.25, radius: 9 },
-    { x: 120, y: 180, vx: 0.3, vy: -0.05, radius: 7 }
+    { x: 30, y: 150, vx: 0.12, vy: 0.08, radius: 8 },
+    { x: 180, y: 80, vx: -0.1, vy: 0.18, radius: 9 },
+    { x: 120, y: 180, vx: 0.2, vy: -0.04, radius: 7 }
 ];
 
 const cvPedestriansCam2 = [
-    { x: 140, y: 100, vx: 0, vy: 0, state: 'hesitate', angle: 0, radius: 9 }, // does circular movement
-    { x: 50, y: 60, vx: 0.2, vy: 0.2, radius: 8 }
+    { x: 140, y: 100, vx: 0, vy: 0, state: 'hesitate', angle: 0, radius: 9 },
+    { x: 50, y: 60, vx: 0.15, vy: 0.15, radius: 8 }
 ];
 
 function drawCVCamera(canvas, ctx, label, speedMultiplier, isAnomalous = false) {
@@ -1110,57 +940,45 @@ function drawCVCamera(canvas, ctx, label, speedMultiplier, isAnomalous = false) 
     ctx.fillStyle = '#05070f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Render scan lines
+    // Draw scan lines
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.015)';
     ctx.lineWidth = 1;
     for(let y = 0; y < canvas.height; y += 4) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
     }
     
-    // Update and draw CV vectors
     const pedestrians = isAnomalous ? cvPedestriansCam2 : cvPedestriansCam1;
     
     pedestrians.forEach(p => {
         if(p.state === 'hesitate') {
-            // Circular patrol path (hesitation model)
             p.angle += 0.02;
             p.x = 130 + Math.cos(p.angle) * 35;
             p.y = 110 + Math.sin(p.angle) * 15;
         } else {
-            p.x += p.vx * 60 * speedMultiplier * 10;
-            p.y += p.vy * 60 * speedMultiplier * 10;
+            p.x += p.vx * 30 * speedMultiplier * 10;
+            p.y += p.vy * 30 * speedMultiplier * 10;
             
-            // Screen bounce
             if(p.x < 10 || p.x > canvas.width - 10) p.vx *= -1;
             if(p.y < 10 || p.y > canvas.height - 10) p.vy *= -1;
         }
         
-        // Draw pixelated non-invasive bounding box
-        // We draw vector circles/shapes without faces, representing privacy
         const color = isAnomalous && p.state === 'hesitate' ? 'var(--color-danger)' : 'var(--color-success)';
+        const boxSize = p.radius * 2.8;
         
         ctx.strokeStyle = color;
         ctx.lineWidth = 1.5;
-        // Bounding box rectangle
-        const boxSize = p.radius * 2.8;
         ctx.strokeRect(p.x - boxSize/2, p.y - boxSize, boxSize, boxSize * 1.5);
         
-        // Target bracket corners
-        ctx.beginPath();
-        // Label text
         ctx.fillStyle = color;
         ctx.font = '8px var(--font-mono)';
-        const labelText = isAnomalous && p.state === 'hesitate' ? 'SUSP_HESIT' : 'ANON_PED';
+        const labelText = isAnomalous && p.state === 'hesitate' ? 'ALERTA_SUSP' : 'ANON_PED_VEC';
         ctx.fillText(labelText, p.x - boxSize/2, p.y - boxSize - 3);
         
-        // Draw abstract wireframe vector lines inside to represent skeletal data
+        // Skeletal lines representation (Privacy)
         ctx.strokeStyle = 'rgba(255,255,255,0.15)';
         ctx.lineWidth = 1;
-        // Draw head
         ctx.beginPath(); ctx.arc(p.x, p.y - boxSize*0.7, 4, 0, Math.PI*2); ctx.stroke();
-        // Body spine
         ctx.beginPath(); ctx.moveTo(p.x, p.y - boxSize*0.7 + 4); ctx.lineTo(p.x, p.y + boxSize*0.2); ctx.stroke();
-        // Limbs
         ctx.beginPath();
         ctx.moveTo(p.x, p.y - boxSize*0.3); ctx.lineTo(p.x - 6, p.y - boxSize*0.1);
         ctx.moveTo(p.x, p.y - boxSize*0.3); ctx.lineTo(p.x + 6, p.y - boxSize*0.1);
@@ -1169,12 +987,11 @@ function drawCVCamera(canvas, ctx, label, speedMultiplier, isAnomalous = false) 
         ctx.stroke();
     });
     
-    // Draw crosshair grid lines
     ctx.strokeStyle = 'rgba(0, 210, 255, 0.05)';
     ctx.strokeRect(20, 20, canvas.width - 40, canvas.height - 40);
 }
 
-// 12. NEURAL NETWORK WEIGHT VISUALIZER (Simbiose Humana)
+// 12. NEURAL NETWORK GRAPHICS
 const netNodes = {
     inputs: [
         { y: 50, label: "Clima" },
@@ -1205,14 +1022,10 @@ function drawNeuralNetwork() {
     const xHidden = canvas.width / 2;
     const xOut = canvas.width - 80;
     
-    // Decrease calibration pulse timer over frames
     if (calibrationPulseTime > 0) calibrationPulseTime--;
     
-    // Draw connection lines with thickness representing weights
-    // Input -> Hidden
     netNodes.inputs.forEach((input, iIdx) => {
         netNodes.hidden.forEach((hidden, hIdx) => {
-            // Retrieve dynamic weight
             const varName = input.label;
             const wArray = state.humanSymbiosis.weights[varName] || [0.5, 0.5, 0.5];
             const weightVal = wArray[hIdx % wArray.length];
@@ -1220,7 +1033,6 @@ function drawNeuralNetwork() {
             const thickness = Math.max(weightVal * 4.5, 0.5);
             let color = `rgba(0, 210, 255, ${0.1 + weightVal * 0.4})`;
             
-            // Pulse connection lines during calibration
             if (calibrationPulseTime > 0) {
                 color = `rgba(0, 255, 136, ${0.4 + (calibrationPulseTime/30)*0.6})`;
             }
@@ -1234,7 +1046,6 @@ function drawNeuralNetwork() {
         });
     });
     
-    // Hidden -> Output
     netNodes.hidden.forEach((hidden, hIdx) => {
         netNodes.outputs.forEach((output, oIdx) => {
             const weightVal = (hIdx * 0.2 + oIdx * 0.15) % 0.8 + 0.1;
@@ -1254,10 +1065,8 @@ function drawNeuralNetwork() {
         });
     });
     
-    // Draw Nodes
     const drawNodeGroup = (nodesList, xPos, isLabelLeft = false, hasLabels = true) => {
         nodesList.forEach(node => {
-            // Pulse nodes
             let radius = 7;
             if (calibrationPulseTime > 0) {
                 radius = 7 + (calibrationPulseTime / 30) * 4;
@@ -1267,13 +1076,10 @@ function drawNeuralNetwork() {
             ctx.beginPath();
             ctx.arc(xPos, node.y, radius, 0, Math.PI * 2);
             ctx.fill();
-            
-            // Border
             ctx.strokeStyle = '#ffffff';
             ctx.lineWidth = 1.5;
             ctx.stroke();
             
-            // Text Label
             if (hasLabels && node.label) {
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 9px var(--font-sans)';
@@ -1288,26 +1094,29 @@ function drawNeuralNetwork() {
     drawNodeGroup(netNodes.outputs, xOut, false);
 }
 
-// 13. UTILS & SYSTEM SIMULATION SLOW UPDATE
+// 13. MAIN LOOP
+function mainLoop(timestamp) {
+    if (state.activeTab === 'twin') {
+        drawCVCamera(cam1Canvas, cam1Ctx, 'MASP Cam', 0.002);
+        drawCVCamera(cam2Canvas, cam2Ctx, 'Pamplona Cam', 0.005, true);
+    } else if (state.activeTab === 'simbiose') {
+        drawNeuralNetwork();
+    }
+    
+    requestAnimationFrame(mainLoop);
+}
+
 function getShortTime() {
     const now = new Date();
     return now.toTimeString().split(' ')[0].slice(0, 5);
 }
 
 function slowMetricUpdater() {
-    // Fluctuates accuracy and status weights to make it feel alive
     state.systemMetrics.precision = (93.5 + Math.random() * 1.5).toFixed(1);
     state.systemMetrics.coherence = (95.8 + Math.random() * 2.0).toFixed(1);
     
-    // Update sidebar text
     const precEl = document.getElementById('sys-precision');
     const confEl = document.getElementById('sys-confidence');
     if (precEl) precEl.textContent = state.systemMetrics.precision + '%';
     if (confEl) confEl.textContent = state.systemMetrics.coherence + '%';
-    
-    // Clean old anomalies if list grows too large
-    if(state.anomalies.length > 20) {
-        state.anomalies.pop();
-        renderAnomalies();
-    }
 }
