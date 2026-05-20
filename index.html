@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel IA - Plataforma de Segurança Preditiva</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Sidebar Navigation -->
+    <aside>
+        <div class="brand">
+            <div class="brand-icon">
+                <!-- Shield Icon with Pulse SVG -->
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <div class="brand-text">
+                <span class="brand-title">SENTINEL</span>
+                <span class="brand-subtitle">Inteligência Simbiótica</span>
+            </div>
+        </div>
+
+        <nav>
+            <div class="nav-item active" data-tab="dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="9"></rect>
+                    <rect x="14" y="3" width="7" height="5"></rect>
+                    <rect x="14" y="12" width="7" height="9"></rect>
+                    <rect x="3" y="16" width="7" height="5"></rect>
+                </svg>
+                Painel Geral
+            </div>
+            <div class="nav-item" data-tab="cerebro">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                    <path d="M12 6v6l4 2"></path>
+                </svg>
+                O Cérebro
+            </div>
+            <div class="nav-item" data-tab="nlp">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+                Filtro Social
+            </div>
+            <div class="nav-item" data-tab="twin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                    <polyline points="2 17 12 22 22 17"></polyline>
+                    <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                Gêmeos Digitais
+            </div>
+            <div class="nav-item" data-tab="simbiose">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Simbiose Humana
+            </div>
+        </nav>
+
+        <div class="sys-monitor">
+            <div class="sys-monitor-title">
+                Monitor do Sistema
+                <span class="sys-indicator"></span>
+            </div>
+            <div class="sys-status-row">
+                <span class="sys-status-label">Precisão do Modelo</span>
+                <span class="sys-status-val" id="sys-precision">94.2%</span>
+            </div>
+            <div class="sys-status-row">
+                <span class="sys-status-label">Simulações/s</span>
+                <span class="sys-status-val" id="sys-simulations">10.0k</span>
+            </div>
+            <div class="sys-status-row">
+                <span class="sys-status-label">Score de Coerência</span>
+                <span class="sys-status-val" id="sys-confidence">96.8%</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main>
+        <header>
+            <div class="header-title-area">
+                <h1 id="tab-title">Painel Operacional Geral</h1>
+                <p id="tab-subtitle">Visão unificada das redes preditivas e monitoramento em tempo real</p>
+            </div>
+            <div class="datetime-widget">
+                <!-- Clock Icon -->
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span id="current-time">20/05/2026 13:54:17</span>
+            </div>
+        </header>
+
+        <!-- TAB: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active">
+            <!-- Stat Cards Row -->
+            <div class="dash-row">
+                <div class="stat-card">
+                    <div class="stat-card-title">Precisão Preditiva (Cérebro)</div>
+                    <div class="stat-card-val">94.2%</div>
+                    <div class="stat-card-footer">
+                        <span class="trend-up">▲ +1.4%</span> em relação à semana passada
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-title">Relatos Processados (NLP)</div>
+                    <div class="stat-card-val" id="dash-nlp-count">1,489</div>
+                    <div class="stat-card-footer">
+                        <span class="trend-up">▲ 98.4%</span> de veracidade do NLP
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-title">Anomalias Espaciais Ativas</div>
+                    <div class="stat-card-val" id="dash-anomaly-count">3</div>
+                    <div class="stat-card-footer">
+                        <span class="trend-down">▼ -12%</span> queda de falsos alertas
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-title">Prevenção por Bloqueio</div>
+                    <div class="stat-card-val">85.0%</div>
+                    <div class="stat-card-footer">
+                        <span class="trend-up">▲ Intercepção Ideal</span> via Gêmeo Digital
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Content Grid -->
+            <div class="grid-2col">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+                            Mapa Estocástico de Risco - Visão Rápida
+                        </h3>
+                        <button class="btn btn-primary" onclick="switchTab('cerebro')">Abrir Painel Completo</button>
+                    </div>
+                    <!-- Quick Map Rendering Area -->
+                    <div class="map-container" style="height: 300px;">
+                        <canvas id="quick-map-canvas" class="map-canvas"></canvas>
+                        <div class="map-overlay">
+                            <div class="map-legend-row"><div class="color-bar" style="background: rgba(255, 56, 96, 0.6)"></div> Risco Alto (Probabilidade > 75%)</div>
+                            <div class="map-legend-row"><div class="color-bar" style="background: rgba(255, 184, 0, 0.5)"></div> Risco Médio (35% - 75%)</div>
+                            <div class="map-legend-row"><div class="color-bar" style="background: rgba(0, 255, 136, 0.3)"></div> Risco Baixo (< 35%)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            Relatos NLP Recentes
+                        </h3>
+                        <button class="btn" onclick="switchTab('nlp')">Ver Todos</button>
+                    </div>
+                    <div class="nlp-feed" style="max-height: 300px;" id="quick-nlp-feed">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: O CÉREBRO -->
+        <div id="tab-cerebro" class="tab-content">
+            <div class="grid-2col">
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/></svg>
+                            Modelo Estocástico de Riscos Dinâmicos
+                        </h3>
+                    </div>
+
+                    <!-- Clima, Eventos e Economia Controls -->
+                    <div class="control-group">
+                        <div class="control-label">Fator Climático Atual</div>
+                        <div class="selector-grid" id="weather-selectors">
+                            <button class="selector-btn active" data-value="sunny">Limpo</button>
+                            <button class="selector-btn" data-value="rainy">Chuva Leve</button>
+                            <button class="selector-btn" data-value="storm">Tempestade</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label">Calendário de Eventos locais</div>
+                        <div class="selector-grid" id="event-selectors">
+                            <button class="selector-btn active" data-value="none">Nenhum</button>
+                            <button class="selector-btn" data-value="festive">Praça Lotada (Evento)</button>
+                            <button class="selector-btn" data-value="protest">Manifestação</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <div class="control-label">Indicador Econômico Local</div>
+                        <div class="selector-grid" id="economy-selectors">
+                            <button class="selector-btn active" data-value="normal">Estável</button>
+                            <button class="selector-btn" data-value="inflation">Flutuação de Fluxo (-20%)</button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px;">
+                        <h4 style="font-size: 0.9rem; margin-bottom: 0.5rem; color: var(--color-primary)">Análise de Variáveis Acopladas</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.5;" id="correlation-analysis-text">
+                            O clima está estável e o fluxo de pessoas na região comercial está em conformidade. O Sentinel trabalha com risco basal de 12%. As variáveis econômicas não indicam estresse na malha.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Live Risk Heatmap -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
+                            Mapa de Fusão Espaçotemporal (Tempo Real)
+                        </h3>
+                    </div>
+                    <div class="map-container" style="height: 380px;">
+                        <canvas id="brain-map-canvas" class="map-canvas"></canvas>
+                        <div class="map-overlay">
+                            <div class="map-legend-row"><div class="color-bar" style="background: rgba(255, 56, 96, 0.65)"></div> Risco Crítico (> 75%)</div>
+                            <div class="map-legend-row"><div class="color-bar" style="background: rgba(255, 184, 0, 0.5)"></div> Alerta Moderado (35% - 75%)</div>
+                            <div class="map-legend-row"><div class="color-bar" style="background: rgba(0, 255, 136, 0.3)"></div> Estabilidade (< 35%)</div>
+                            <div class="map-legend-row" style="margin-top: 5px; font-size: 0.65rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 5px; color: var(--text-muted)">Clique na grade do mapa para ver as coordenadas do sensor estocástico.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row for Anomalies -->
+            <div class="panel" style="margin-top: 1rem;">
+                <div class="panel-header">
+                    <h3 class="panel-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Registro de Desvios e Anomalias Estocásticas
+                    </h3>
+                </div>
+                <div class="anomaly-feed" id="brain-anomaly-feed">
+                    <!-- Dynamic updates -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: FILTRO SOCIAL (NLP) -->
+        <div id="tab-nlp" class="tab-content">
+            <div class="grid-2col">
+                <!-- Live Report feed with classification -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            Fila de Triagem NLP Inteligente
+                        </h3>
+                        <div class="panel-actions">
+                            <button class="btn btn-primary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;" onclick="clearReportLogs()">Limpar Logs</button>
+                        </div>
+                    </div>
+                    <div class="nlp-feed" id="full-nlp-feed">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <!-- Simulation interface to write and analyze community messages -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                            Simular Novo Alerta de Comunidade
+                        </h3>
+                    </div>
+                    <form class="report-form" id="report-input-form" onsubmit="handleNewReportSubmit(event)">
+                        <div class="form-group">
+                            <label class="control-label" for="report-author">Nome do Informante / ID</label>
+                            <input class="form-input" id="report-author" type="text" placeholder="Ex: Usuário_841" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label">Score de Confiabilidade da Fonte (Reputação)</label>
+                            <div class="confidence-range-container">
+                                <input class="confidence-slider" id="report-reliability" type="range" min="0" max="100" value="85" oninput="updateSliderVal(this.value)">
+                                <span class="confidence-display" id="reliability-val">85%</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label" for="report-text">Relato por Escrito</label>
+                            <textarea class="form-input" id="report-text" placeholder="Ex: Há um grupo de pessoas observando a entrada do banco comercial, parece que estão forçando a porta dos fundos ou rondando há uns 15 minutos." required></textarea>
+                        </div>
+
+                        <button class="btn btn-primary" type="submit">
+                            Submeter para Triagem NLP
+                        </button>
+                    </form>
+
+                    <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(0, 210, 255, 0.03); border: 1px solid rgba(0, 210, 255, 0.15); border-radius: 8px;">
+                        <h4 style="font-size: 0.85rem; color: var(--color-primary); margin-bottom: 0.4rem;">Como Funciona o Filtro Social?</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.4;">
+                            A Sentinel analisa a estrutura de linguagem natural para extrair semântica, nível de pânico, e geolocalizações implícitas. Relatos enviados por fontes com alta reputação geram prioridades instantâneas na malha e são validados cruzando dados com sensores locais do Cérebro.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: GÊMEOS DIGITAIS -->
+        <div id="tab-twin" class="tab-content">
+            <div class="twin-grid">
+                <!-- Left: 3D Twin Grid Render -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                            Gêmeo Digital 3D (Réplica Tática Virtual)
+                        </h3>
+                        <div class="panel-actions">
+                            <button class="btn btn-primary btn-success" id="btn-montecarlo" onclick="startMonteCarloSimulation()">Executar Monte Carlo (10k rotas)</button>
+                            <button class="btn btn-danger" onclick="triggerIncident()">Gerar Incidente Aleatório</button>
+                        </div>
+                    </div>
+
+                    <div class="twin-map-panel">
+                        <canvas id="twin-canvas" class="twin-canvas"></canvas>
+                        
+                        <!-- Monte Carlo HUD overlay -->
+                        <div class="monte-carlo-box" id="monte-carlo-hud">
+                            <div class="monte-carlo-title">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                Análise de Rota de Fuga
+                            </div>
+                            <div>Status: <span id="monte-carlo-status" style="font-weight: bold; color: var(--text-muted)">Inativo</span></div>
+                            <div class="monte-carlo-progress-bar">
+                                <div class="monte-carlo-progress-fill" id="monte-carlo-fill"></div>
+                            </div>
+                            <div class="probability-row">
+                                <span>Bloqueio Ponto B:</span>
+                                <span class="prob-val danger" id="prob-ptb">--%</span>
+                            </div>
+                            <div class="probability-row">
+                                <span>Bloqueio Ponto C:</span>
+                                <span class="prob-val warning" id="prob-ptc">--%</span>
+                            </div>
+                            <div class="probability-row" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 4px; margin-top: 4px;">
+                                <span>Rota de Intercepção:</span>
+                                <span class="prob-val success" id="prob-best" style="font-size: 0.85rem">Ponto B (85% Eficácia)</span>
+                            </div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.3;">
+                                Simula 10.000 caminhos de fuga potenciais com base na velocidade média, tráfego de vias e pontos de bloqueio da equipe.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: CV Feed Preserving Privacy -->
+                <div class="camera-feed-container">
+                    <div class="panel" style="padding: 1rem;">
+                        <div class="panel-header" style="margin-bottom: 0.75rem;">
+                            <h3 class="panel-title" style="font-size: 0.95rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Visão Computacional Não Invasiva
+                            </h3>
+                        </div>
+                        
+                        <!-- Video Feed 1 -->
+                        <div class="camera-feed" style="margin-bottom: 1rem;">
+                            <canvas id="cam-1-canvas" class="cam-canvas"></canvas>
+                            <div class="cam-overlay">
+                                <span class="cam-rec-dot"></span>
+                                CAM_ZONA_SUL_01
+                            </div>
+                            <div class="cam-cv-stat" id="cam-1-status">Luz: 34% | Fluxo Normal</div>
+                        </div>
+
+                        <!-- Video Feed 2 -->
+                        <div class="camera-feed">
+                            <canvas id="cam-2-canvas" class="cam-canvas"></canvas>
+                            <div class="cam-overlay">
+                                <span class="cam-rec-dot"></span>
+                                CAM_ZONA_CENTRO_04
+                            </div>
+                            <div class="cam-cv-stat" id="cam-2-status" style="color: var(--color-danger)">Hesitação Detectada</div>
+                        </div>
+
+                        <div style="font-size: 0.7rem; color: var(--text-dark); line-height: 1.4; margin-top: 0.5rem; text-align: center;">
+                            * Imagens em conformidade com privacidade. Rostos e identidades não são processados. Apenas vetores de movimento e padrões geométricos.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: SIMBIOSE HUMANA -->
+        <div id="tab-simbiose" class="tab-content">
+            <div class="grid-2col">
+                <!-- Left: Cognitive Briefing -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            Briefing Cognitivo Tático
+                        </h3>
+                    </div>
+
+                    <div class="briefing-box" id="cognitive-briefing-text">
+                        Aguardando atualização do modelo...
+                    </div>
+
+                    <h4 style="font-size: 0.9rem; margin-bottom: 0.75rem;">Simulador de Feedback de Campo (Loop Simbiótico)</h4>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        O loop simbiótico permite que a equipe humana confirme ou refute os modelos do Sentinel. Isso recalibra os pesos das conexões neurais do sistema em tempo real.
+                    </p>
+
+                    <div class="feedback-grid">
+                        <div class="feedback-card" onclick="submitHumanFeedback('confirm', this)">
+                            <div class="feedback-card-title" style="color: var(--color-success)">▲ Confirmar Risco</div>
+                            <div class="feedback-card-desc">A equipe tática confirma que a anomalia é válida (Risco Real).</div>
+                        </div>
+                        <div class="feedback-card" onclick="submitHumanFeedback('deny', this)">
+                            <div class="feedback-card-title" style="color: var(--color-danger)">▼ Alarme Falso</div>
+                            <div class="feedback-card-desc">A equipe inspeciona o local e nega qualquer ameaça (Falso Positivo).</div>
+                        </div>
+                        <div class="feedback-card" onclick="submitHumanFeedback('low_light', this)">
+                            <div class="feedback-card-title" style="color: var(--color-warning)">★ Nova Variável: Lâmpada Quebrada</div>
+                            <div class="feedback-card-desc">A equipe reporta deficiência física na malha urbana que altera o risco.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Neural Network Weights Visualizer -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                            Pesos Algorítmicos em Tempo Real (Rede de Correlação)
+                        </h3>
+                        <div class="panel-actions">
+                            <span class="sys-status-val" id="weights-status" style="font-size: 0.75rem; color: var(--color-success)">Calibrada</span>
+                        </div>
+                    </div>
+                    
+                    <div class="network-visualizer-container">
+                        <canvas id="network-canvas" class="network-canvas"></canvas>
+                        <div class="network-tooltip" id="network-tooltip">Peso: 0.72</div>
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.75rem; line-height: 1.4;">
+                        Cada nó representa uma variável de correlação (Temperatura, Iluminação, Relatos, Tráfego) e as conexões representam os pesos sinápticos calculados pelo Deep Learning. Submeta feedbacks de campo para ver a readequação dos pesos.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
