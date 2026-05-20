@@ -11,6 +11,8 @@
     <!-- TensorFlow.js and COCO-SSD for Real Computer Vision -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js"></script>
+    <!-- HLS.js for IP camera stream playback -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
 </head>
 <body>
 
@@ -62,6 +64,13 @@
                     <polyline points="2 12 12 17 22 12"></polyline>
                 </svg>
                 Gêmeos Digitais
+            </div>
+            <div class="nav-item" data-tab="cameras">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                    <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                Câmeras IP
             </div>
             <div class="nav-item" data-tab="simbiose">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -415,6 +424,88 @@
             </div>
         </div>
 
+        <!-- TAB: CÂMERAS IP (RTSP SERVER) -->
+        <div id="tab-cameras" class="tab-content">
+
+            <!-- Server Status Bar -->
+            <div id="server-status-bar" class="server-status-bar">
+                <span id="server-status-dot" class="server-dot offline"></span>
+                <span id="server-status-text">Verificando servidor proxy (porta 3001)...</span>
+                <button class="btn" style="margin-left:auto; font-size:0.75rem; padding:0.3rem 0.7rem;" onclick="checkServerStatus()">↺ Verificar</button>
+                <a href="http://localhost:3001" target="_blank" class="btn" style="font-size:0.75rem; padding:0.3rem 0.7rem;">Abrir Painel do Servidor ↗</a>
+            </div>
+
+            <div class="grid-2col" style="margin-top:1rem;">
+                <!-- Left: Add camera form -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                            Conectar Câmera IP (RTSP)
+                        </h3>
+                    </div>
+
+                    <div style="background:rgba(0,210,255,0.04); border:1px solid rgba(0,210,255,0.15); border-radius:8px; padding:0.85rem; margin-bottom:1rem; font-size:0.8rem; line-height:1.5; color:var(--text-muted);">
+                        <b style="color:var(--color-primary)">Como funciona:</b> O servidor proxy (<code style="color:#7dd3fc">node server.js</code>) converte o stream RTSP da sua câmera IP para HLS, que o navegador reproduz ao vivo. O servidor precisa estar rodando em paralelo ao Vite.
+                    </div>
+
+                    <div class="form-group">
+                        <label class="control-label" for="ip-cam-id">ID da Câmera (único)</label>
+                        <input class="form-input" id="ip-cam-id" placeholder="Ex: entrada_principal" />
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label" for="ip-cam-name">Nome da Câmera</label>
+                        <input class="form-input" id="ip-cam-name" placeholder="Ex: Câmera Entrada Principal" />
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label" for="ip-cam-rtsp">URL RTSP da Câmera</label>
+                        <input class="form-input" id="ip-cam-rtsp" placeholder="rtsp://admin:senha@192.168.1.100:554/stream1" />
+                    </div>
+
+                    <button class="btn btn-primary" style="margin-top:1rem; width:100%;" onclick="addIPCamera()">
+                        ▶ Iniciar Stream da Câmera
+                    </button>
+                    <div id="ip-cam-msg" style="margin-top:0.75rem; font-size:0.8rem; display:none;"></div>
+
+                    <!-- URL examples -->
+                    <div style="margin-top:1.5rem;">
+                        <div class="control-label" style="margin-bottom:0.5rem;">Exemplos de URL RTSP por Marca</div>
+                        <div class="rtsp-example" onclick="fillRtsp('rtsp://admin:senha@192.168.1.X:554/cam/realmonitor?channel=1&subtype=0')">Dahua → <code>rtsp://admin:senha@IP:554/cam/realmonitor?channel=1&amp;subtype=0</code></div>
+                        <div class="rtsp-example" onclick="fillRtsp('rtsp://admin:senha@192.168.1.X:554/Streaming/Channels/101')">Hikvision → <code>rtsp://admin:senha@IP:554/Streaming/Channels/101</code></div>
+                        <div class="rtsp-example" onclick="fillRtsp('rtsp://admin:senha@192.168.1.X:554/cam1')">Intelbras → <code>rtsp://admin:senha@IP:554/cam1</code></div>
+                        <div class="rtsp-example" onclick="fillRtsp('rtsp://admin:senha@192.168.1.X:554/video1')">Genérico → <code>rtsp://admin:senha@IP:554/video1</code></div>
+                    </div>
+                </div>
+
+                <!-- Right: Active camera grid -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h3 class="panel-title">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            Câmeras IP Ativas
+                        </h3>
+                        <button class="btn" style="font-size:0.75rem; padding:0.3rem 0.7rem;" onclick="refreshIPCameraList()">↺ Atualizar</button>
+                    </div>
+                    <div id="ip-camera-list">
+                        <div style="color:var(--text-dark); font-size:0.85rem; text-align:center; padding:2rem 0;">Nenhuma câmera IP conectada.<br>Preencha o formulário ao lado para adicionar.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live stream viewer area -->
+            <div class="panel" style="margin-top:1rem;" id="hls-viewers-panel">
+                <div class="panel-header">
+                    <h3 class="panel-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6s4-6 11-6 11 6 11 6-4 6-11 6S1 6 1 6z"/><circle cx="12" cy="6" r="2"/></svg>
+                        Monitor Ao Vivo — Streams HLS
+                    </h3>
+                </div>
+                <div id="hls-viewers-grid" class="hls-grid">
+                    <div style="color:var(--text-dark); font-size:0.85rem; text-align:center; padding:2rem 0;">Os feeds de vídeo ao vivo aparecerão aqui assim que as câmeras forem conectadas e o stream iniciar (~5 segundos).</div>
+                </div>
+            </div>
+        </div>
+
         <!-- TAB: SIMBIOSE HUMANA -->
         <div id="tab-simbiose" class="tab-content">
             <div class="grid-2col">
@@ -479,5 +570,6 @@
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="app.js"></script>
+    <script src="cameras.js"></script>
 </body>
 </html>
