@@ -586,58 +586,92 @@ function updateSliderVal(val) {
     document.getElementById('reliability-val').textContent = val + '%';
 }
 
+// Mapa de detecção de cidades brasileiras a partir do texto
+const CITY_GEO_MAP = [
+    // Sudeste
+    { keywords: ['são paulo','sao paulo','sp','paulista','masp','augusta','paulistano','paulista'],    location: 'São Paulo — SP',            coords: [-23.5505, -46.6333] },
+    { keywords: ['rio de janeiro','rio','rj','copacabana','ipanema','lapa','zona norte','subúrbio'],   location: 'Rio de Janeiro — RJ',       coords: [-22.9068, -43.1729] },
+    { keywords: ['belo horizonte','bh','beagá','hipercentro','pampulha'],                              location: 'Belo Horizonte — MG',       coords: [-19.9191, -43.9387] },
+    { keywords: ['campinas'],                                                                          location: 'Campinas — SP',             coords: [-22.9056, -47.0608] },
+    { keywords: ['vitória','vix','vitoria','grande vitória'],                                          location: 'Vitória — ES',              coords: [-20.3155, -40.3128] },
+    // Nordeste
+    { keywords: ['fortaleza','aldeota','messejana','forta'],                                           location: 'Fortaleza — CE',            coords: [-3.7319,  -38.5267] },
+    { keywords: ['salvador','ssa','subúrbio','suburbio','pelourinho'],                                 location: 'Salvador — BA',             coords: [-12.9714, -38.5014] },
+    { keywords: ['recife','recife','olinda','zeis','boa viagem'],                                      location: 'Recife — PE',               coords: [-8.0476,  -34.8770] },
+    { keywords: ['maceió','maceio','tabuleiro'],                                                       location: 'Maceió — AL',               coords: [-9.6658,  -35.7350] },
+    { keywords: ['natal','zona norte','potengi'],                                                      location: 'Natal — RN',                coords: [-5.7945,  -35.2110] },
+    { keywords: ['joão pessoa','joao pessoa','cristo'],                                                location: 'João Pessoa — PB',          coords: [-7.1195,  -34.8450] },
+    { keywords: ['teresina','dirceu'],                                                                 location: 'Teresina — PI',             coords: [-5.0892,  -42.8019] },
+    { keywords: ['são luís','são luis','sao luis','maranhão'],                                         location: 'São Luís — MA',             coords: [-2.5297,  -44.3028] },
+    { keywords: ['aracaju','bugio'],                                                                   location: 'Aracaju — SE',              coords: [-10.9472, -37.0731] },
+    // Norte
+    { keywords: ['belém','belem','guamá','guama','ver-o-peso'],                                       location: 'Belém — PA',                coords: [-1.4558,  -48.4902] },
+    { keywords: ['manaus','zona leste','amazonas','am'],                                               location: 'Manaus — AM',               coords: [-3.1190,  -60.0217] },
+    { keywords: ['porto velho','rondônia','rondonia'],                                                 location: 'Porto Velho — RO',          coords: [-8.7612,  -63.9004] },
+    { keywords: ['macapá','macapa','amapá','amapa'],                                                   location: 'Macapá — AP',               coords: [0.0349,   -51.0694] },
+    { keywords: ['boa vista','roraima'],                                                               location: 'Boa Vista — RR',            coords: [2.8235,   -60.6758] },
+    { keywords: ['rio branco','acre'],                                                                 location: 'Rio Branco — AC',           coords: [-9.9754,  -67.8249] },
+    { keywords: ['palmas','tocantins'],                                                                location: 'Palmas — TO',               coords: [-10.2491, -48.3243] },
+    // Centro-Oeste
+    { keywords: ['brasília','brasilia','ceilândia','ceilandia','df','plano piloto'],                   location: 'Brasília — DF',             coords: [-15.8267, -48.1128] },
+    { keywords: ['goiânia','goiania','goiás','goias'],                                                 location: 'Goiânia — GO',              coords: [-16.6869, -49.2648] },
+    { keywords: ['campo grande','mato grosso do sul','ms'],                                            location: 'Campo Grande — MS',         coords: [-20.4697, -54.6201] },
+    { keywords: ['cuiabá','cuiaba','mato grosso','cpa'],                                               location: 'Cuiabá — MT',               coords: [-15.5989, -56.0949] },
+    // Sul
+    { keywords: ['curitiba','cwb','sítio cercado','sitio cercado','paraná'],                           location: 'Curitiba — PR',             coords: [-25.5163, -49.1758] },
+    { keywords: ['porto alegre','poa','rs','rio grande do sul','deta'],                                location: 'Porto Alegre — RS',         coords: [-30.0346, -51.2177] },
+    { keywords: ['florianópolis','florianopolis','fpolis','santa catarina','sc'],                      location: 'Florianópolis — SC',        coords: [-27.5954, -48.5480] },
+];
+
+function detectLocationFromText(text) {
+    const t = text.toLowerCase();
+    for (const entry of CITY_GEO_MAP) {
+        if (entry.keywords.some(k => t.includes(k))) {
+            return { location: entry.location, coords: entry.coords };
+        }
+    }
+    // Fallback: São Paulo genérico
+    return { location: 'Localização não identificada (padrão: São Paulo)', coords: [-23.5505, -46.6333] };
+}
+
 function handleNewReportSubmit(event) {
     event.preventDefault();
     
-    const author = document.getElementById('report-author').value;
+    const author      = document.getElementById('report-author').value;
     const reliability = parseInt(document.getElementById('report-reliability').value);
-    const text = document.getElementById('report-text').value;
+    const text        = document.getElementById('report-text').value;
     
-    let sentiment = "Neutro";
-    let urgency = "baixa";
-    let keywords = [];
-    const textLower = text.toLowerCase();
+    // --- Análise de urgência / sentimento ---
+    let sentiment = 'Neutro';
+    let urgency   = 'baixa';
+    let keywords  = [];
+    const t = text.toLowerCase();
     
-    if (textLower.includes('assalto') || textLower.includes('arma') || textLower.includes('roubo') || textLower.includes('faca') || textLower.includes('invadindo')) {
-        urgency = "alta";
-        sentiment = "Crítico / Urgente";
-        keywords.push("Ameaça Física");
-    } else if (textLower.includes('suspeito') || textLower.includes('rondando') || textLower.includes('escuro') || textLower.includes('quebrada')) {
-        urgency = "media";
-        sentiment = "Alerta Comportamental";
-        keywords.push("Suspeita");
+    if (t.includes('assalto') || t.includes('arma') || t.includes('roubo') || t.includes('faca') || t.includes('invadindo') || t.includes('atirou') || t.includes('bala')) {
+        urgency   = 'alta';
+        sentiment = 'Crítico / Urgente';
+        keywords.push('Ameaça Física');
+    } else if (t.includes('suspeito') || t.includes('rondando') || t.includes('escuro') || t.includes('quebrada') || t.includes('assediando') || t.includes('seguindo')) {
+        urgency   = 'media';
+        sentiment = 'Alerta Comportamental';
+        keywords.push('Suspeita');
     } else {
-        urgency = "baixa";
-        sentiment = "Informativo";
-        keywords.push("Infraestrutura");
+        urgency   = 'baixa';
+        sentiment = 'Informativo';
+        keywords.push('Infraestrutura');
     }
     
-    let location = "Av. Paulista - Geral";
-    let coords = [-23.5615, -46.6562]; // MASP
+    // --- Detecção geográfica pelo texto ---
+    const { location, coords } = detectLocationFromText(text);
     
-    if (textLower.includes('augusta')) {
-        location = "Rua Augusta";
-        coords = [-23.5595, -46.6585];
-    } else if (textLower.includes('pamplona')) {
-        location = "Al. Pamplona";
-        coords = [-23.5632, -46.6542];
-    } else if (textLower.includes('santos')) {
-        location = "Al. Santos";
-        coords = [-23.5650, -46.6558];
-    }
-    
+    // --- Cria o relatório ---
     const newReport = {
         id: Date.now(),
-        author: author,
-        reliability: reliability,
-        text: text,
-        urgency: urgency,
-        analysis: {
-            sentiment: sentiment,
-            keywords: keywords,
-            location: location,
-            timestamp: getShortTime()
-        }
+        author,
+        reliability,
+        text,
+        urgency,
+        analysis: { sentiment, keywords, location, timestamp: getShortTime() }
     };
     
     state.nlpReports.unshift(newReport);
@@ -645,31 +679,50 @@ function handleNewReportSubmit(event) {
     document.getElementById('report-input-form').reset();
     document.getElementById('reliability-val').textContent = '85%';
     
-    // Inject threat circle at coordinates derived from NLP
-    state.riskLocations.push({
-        name: `Relato NLP: ${author}`,
-        coords: coords,
-        baseRisk: urgency === 'alta' ? 85 : 55
-    });
+    // --- Adiciona zona de risco no mapa marcada como fromNLP ---
+    const nlpZone = {
+        name:     `🔴 NLP: ${author} (${location})`,
+        coords,
+        baseRisk: urgency === 'alta' ? 88 : urgency === 'media' ? 65 : 45,
+        fromNLP:  true   // <- flag para remoção ao limpar logs
+    };
+    state.riskLocations.push(nlpZone);
     updateGeographicRisks();
     
+    // --- Zoom no mapa do Cérebro para a região detectada ---
+    if (brainMap) {
+        const zoomLevel = urgency === 'alta' ? 13 : urgency === 'media' ? 11 : 9;
+        brainMap.setView(coords, zoomLevel, { animate: true });
+    }
+    
+    // --- Anomalia no feed ---
     state.anomalies.unshift({
-        id: Date.now(),
-        title: `NLP Alerta: ${urgency.toUpperCase()}`,
-        type: urgency === 'alta' ? 'danger' : 'warning',
-        text: `Relato sobre ${location} processado. Risco espacial adicionado ao sistema.`,
-        time: getShortTime(),
-        stat: `Score Fonte: ${reliability}%`
+        id:    Date.now(),
+        title: `NLP Alerta: ${urgency.toUpperCase()} — ${location}`,
+        type:  urgency === 'alta' ? 'danger' : 'warning',
+        text:  `Relato de "${author}" processado. Zona de risco adicionada em ${location}.`,
+        time:  getShortTime(),
+        stat:  `Confiança Fonte: ${reliability}%`
     });
     renderAnomalies();
-    
     state.systemMetrics.totalReports++;
 }
 
 function clearReportLogs() {
+    // Remove todos os relatórios NLP
     state.nlpReports = [];
     renderNLPReports();
+    
+    // Remove do mapa APENAS as zonas de risco originadas por NLP
+    state.riskLocations = state.riskLocations.filter(loc => !loc.fromNLP);
+    updateGeographicRisks();
+    
+    // Volta o mapa do Cérebro para a visão do Brasil inteiro
+    if (brainMap) {
+        brainMap.setView([-14.235, -51.925], 4, { animate: true });
+    }
 }
+
 
 // 8. ANOMALIES FEED
 function renderAnomalies() {
