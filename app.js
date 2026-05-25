@@ -13,42 +13,8 @@ const state = {
         totalReports: 1489,
         anomaliesCount: 3
     },
-    // Geographic Risk Locations — Brasil inteiro (capitais e regiões críticas)
-    riskLocations: [
-        // Sudeste
-        { name: "São Paulo — Centro Expandido", coords: [-23.5505, -46.6333], baseRisk: 72 },
-        { name: "Rio de Janeiro — Zona Norte", coords: [-22.9068, -43.1729], baseRisk: 78 },
-        { name: "Belo Horizonte — Hipercentro", coords: [-19.9191, -43.9387], baseRisk: 55 },
-        { name: "Campinas — Centro", coords: [-22.9056, -47.0608], baseRisk: 44 },
-        { name: "Vitória — Grande Vitória", coords: [-20.3155, -40.3128], baseRisk: 62 },
-        // Nordeste
-        { name: "Fortaleza — Bairro Aldeota", coords: [-3.7319, -38.5267], baseRisk: 68 },
-        { name: "Salvador — Subúrbio", coords: [-12.9714, -38.5014], baseRisk: 65 },
-        { name: "Recife — ZEIS", coords: [-8.0476, -34.8770], baseRisk: 74 },
-        { name: "Maceió — Tabuleiro", coords: [-9.6658, -35.7350], baseRisk: 58 },
-        { name: "Natal — Zona Norte", coords: [-5.7945, -35.2110], baseRisk: 61 },
-        { name: "João Pessoa — Cristo", coords: [-7.1195, -34.8450], baseRisk: 53 },
-        { name: "Teresina — Dirceu", coords: [-5.0892, -42.8019], baseRisk: 57 },
-        { name: "São Luís — Itaqui", coords: [-2.5297, -44.3028], baseRisk: 60 },
-        { name: "Aracaju — Bugio", coords: [-10.9472, -37.0731], baseRisk: 49 },
-        // Norte
-        { name: "Belém — Guamá", coords: [-1.4558, -48.4902], baseRisk: 63 },
-        { name: "Manaus — Zona Leste", coords: [-3.1190, -60.0217], baseRisk: 67 },
-        { name: "Porto Velho — Área Central", coords: [-8.7612, -63.9004], baseRisk: 45 },
-        { name: "Macapá — Centro", coords: [0.0349, -51.0694], baseRisk: 42 },
-        { name: "Boa Vista — Centro", coords: [2.8235, -60.6758], baseRisk: 38 },
-        { name: "Rio Branco — Segundo Distrito", coords: [-9.9754, -67.8249], baseRisk: 41 },
-        { name: "Palmas — Sul", coords: [-10.2491, -48.3243], baseRisk: 33 },
-        // Centro-Oeste
-        { name: "Brasília — Ceilândia", coords: [-15.8267, -48.1128], baseRisk: 59 },
-        { name: "Goiânia — Setor Central", coords: [-16.6869, -49.2648], baseRisk: 51 },
-        { name: "Campo Grande — Centro", coords: [-20.4697, -54.6201], baseRisk: 43 },
-        { name: "Cuiabá — CPA", coords: [-15.5989, -56.0949], baseRisk: 47 },
-        // Sul
-        { name: "Curitiba — Bairro Sítio Cercado", coords: [-25.5163, -49.1758], baseRisk: 52 },
-        { name: "Porto Alegre — DETA", coords: [-30.0346, -51.2177], baseRisk: 56 },
-        { name: "Florianópolis — Continente", coords: [-27.5954, -48.5480], baseRisk: 38 }
-    ],
+    // Geographic Risk Locations — inicia vazio, preenchido via NLP
+    riskLocations: [],
     nlpReports: [
         {
             id: 1,
@@ -713,8 +679,8 @@ function clearReportLogs() {
     state.nlpReports = [];
     renderNLPReports();
     
-    // Remove do mapa APENAS as zonas de risco originadas por NLP
-    state.riskLocations = state.riskLocations.filter(loc => !loc.fromNLP);
+    // Remove TODAS as zonas de risco do mapa
+    state.riskLocations = [];
     updateGeographicRisks();
     
     // Volta o mapa do Cérebro para a visão do Brasil inteiro
