@@ -21,6 +21,8 @@ const { spawn }  = require('child_process');
 const path       = require('path');
 const fs         = require('fs');
 const os         = require('os');
+const sqlite3    = require('sqlite3');
+const { open }   = require('sqlite');
 
 const app  = express();
 const PORT = 3001;
@@ -47,6 +49,34 @@ app.use('/hls', express.static(HLS_DIR, {
 //  Estado das câmeras ativas
 // ──────────────────────────────────────────────
 const cameras = {};   // { id: { process, rtsp, name, status, startTime, outputDir } }
+
+// ──────────────────────────────────────────────
+//  Banco de Dados (SQLite)
+// ──────────────────────────────────────────────
+let db;
+async function initDB() {
+    db = await open({
+        filename: path.join(__dirname, 'sentinel.db'),
+        driver: sqlite3.Database
+    });
+    
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            author TEXT,
+            reliability INTEGER,
+            text TEXT,
+            urgency TEXT,
+            sentiment TEXT,
+            keywords TEXT,
+            location TEXT,
+            lat REAL,
+            lng REAL,
+            timestamp TEXT
+        )
+    `);
+    console.log('[DB] Banco de dados SQLite inicializado.');
+}
 
 // ──────────────────────────────────────────────
 //  Detecta se o FFmpeg está instalado
@@ -253,6 +283,59 @@ app.get('/api/cameras/:id', (req, res) => {
 });
 
 // ──────────────────────────────────────────────
+//  ROTAS DO BANCO DE DADOS (Relatos NLP)
+// ──────────────────────────────────────────────
+
+// GET /api/reports — Lista todos os relatórios salvos
+app.get('/api/reports', async (req, res) => {
+    try {
+        const rows = await db.all('SELECT * FROM reports ORDER BY id DESC');
+        // Converte as strings de volta para arrays (keywords)
+        const reports = rows.map(r => ({
+            id: r.id,
+            author: r.author,
+            reliability: r.reliability,
+            text: r.text,
+            urgency: r.urgency,
+            analysis: {
+                sentiment: r.sentiment,
+                keywords: JSON.parse(r.keywords || '[]'),
+                location: r.location,
+                coords: [r.lat, r.lng],
+                timestamp: r.timestamp
+            }
+        }));
+        res.json({ reports });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/reports — Salva um novo relato
+app.post('/api/reports', async (req, res) => {
+    const { author, reliability, text, urgency, sentiment, keywords, location, coords, timestamp } = req.body;
+    try {
+        const result = await db.run(`
+            INSERT INTO reports (author, reliability, text, urgency, sentiment, keywords, location, lat, lng, timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [author, reliability, text, urgency, sentiment, JSON.stringify(keywords), location, coords[0], coords[1], timestamp]);
+        res.status(201).json({ id: result.lastID, message: 'Relato salvo com sucesso.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// DELETE /api/reports — Limpa todo o banco de dados (Limpar Logs)
+app.delete('/api/reports', async (req, res) => {
+    try {
+        await db.run('DELETE FROM reports');
+        res.json({ message: 'Todos os logs foram apagados.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ──────────────────────────────────────────────
 //  Página de gerenciamento embutida
 // ──────────────────────────────────────────────
 app.get('/', (req, res) => {
@@ -412,6 +495,7 @@ process.on('SIGINT', shutdown);
 //  Inicialização
 // ──────────────────────────────────────────────
 app.listen(PORT, async () => {
+    await initDB();
     const ffmpegOk = await checkFFmpeg();
     console.log('');
     console.log('╔══════════════════════════════════════════╗');
