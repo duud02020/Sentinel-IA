@@ -35,7 +35,7 @@ async function checkServerStatus() {
         refreshIPCameraList();
     } catch (e) {
         dot.className  = 'server-dot offline';
-        text.innerHTML = '❌ Servidor offline &mdash; Abra um terminal e execute: <code style="color:#7dd3fc">node server.js</code>';
+        text.innerHTML = '⚠️ <span style="color:var(--text-muted)">Modo Frontend Isolado:</span> Conexão com câmeras físicas desativada. (Recurso disponível apenas no ambiente local executando o Proxy HLS).';
     }
 }
 
